@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}GitHub 趋势 - 第 {{ current_page }} 页{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-end">
+    <div class="col-md-6">
+        <h2>🔥 开源热榜</h2>
+        <p class="text-muted small mb-0">发现 GitHub 上最受关注的项目</p>
+    </div>
+    
+    <div class="col-md-6">
+        <form method="get" class="row g-2 justify-content-md-end">
+            <div class="col-auto">
+                <select name="lang" class="form-select" onchange="this.form.submit()">
+                    {% for lang in language_options %}
+                        <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>
+                            {{ lang|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <select name="period" class="form-select" onchange="this.form.submit()">
+                    <option value="daily" {% if current_period == 'daily' %}selected{% endif %}>今日最热</option>
+                    <option value="weekly" {% if current_period == 'weekly' %}selected{% endif %}>本周最热</option>
+                    <option value="monthly" {% if current_period == 'monthly' %}selected{% endif %}>本月最热</option>
+                </select>
+            </div>
+            
+            </form>
+    </div>
+</div>
+
+<div class="row">
+    {% for repo in repos %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm hover-effect">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <img src="{{ repo.avatar }}" class="rounded-circle me-2 border" width="45" height="45">
+                    <div style="overflow: hidden;">
+                        <h6 class="card-title text-truncate mb-0" title="{{ repo.full_name }}">
+                            <a href="{{ repo.url }}" target="_blank" class="text-decoration-none text-dark">{{ repo.name }}</a>
+                        </h6>
+                        <small class="text-muted">{{ repo.updated_at }}</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="badge bg-warning text-dark">⭐ {{ repo.stars }}</span>
+                    <span class="badge bg-light text-dark border ms-1">{{ repo.language|default:"Unknown" }}</span>
+                </div>
+                
+                <p class="card-text small text-secondary" style="height: 60px; overflow: hidden;">
+                    {{ repo.description|default:"暂无描述"|truncatechars:80 }}
+                </p>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <a href="{{ repo.url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">查看源码</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="alert alert-warning">
+            <h4>🤔 暂无数据</h4>
+            <p>没有找到符合条件的项目，或者 GitHub API 请求超时。</p>
+            <a href="?lang=python&period=weekly" class="btn btn-primary mt-2">重置筛选</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<nav aria-label="Page navigation" class="mt-4 mb-5">
+  <ul class="pagination justify-content-center">
+    {% if prev_page %}
+    <li class="page-item">
+      <a class="page-link" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ prev_page }}">
+        &laquo; 上一页
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">&laquo; 上一页</span></li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">第 {{ current_page }} 页</span>
+    </li>
+
+    <li class="page-item">
+      <a class="page-link" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ next_page }}">
+        下一页 &raquo;
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endblock %}

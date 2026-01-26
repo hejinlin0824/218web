@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}消息中心{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🔔 消息中心</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for notice in notifications %}
+                <a href="{% url 'notifications:read_and_redirect' notice.pk %}" class="list-group-item list-group-item-action {% if not notice.is_read %}bg-light fw-bold{% endif %}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <small class="text-muted">{{ notice.created_at|timesince }}前</small>
+                        {% if not notice.is_read %}<span class="badge bg-danger rounded-pill">NEW</span>{% endif %}
+                    </div>
+                    <p class="mb-1">
+                        <span class="text-primary">{{ notice.actor.nickname|default:notice.actor.username }}</span> 
+                        
+                        {% if notice.verb == 'like' %}
+                            ❤️ 赞了你的帖子
+                        {% elif notice.verb == 'comment' %}
+                            💬 评论了你的帖子: "{{ notice.content }}"
+                        {% elif notice.verb == 'reply' %}
+                            ↩️ 回复了你的评论: "{{ notice.content }}"
+                        
+                        {% elif notice.verb == 'follow' %}
+                            👤 关注了你
+                        {% endif %}
+                    </p>
+                </a>
+                {% empty %}
+                <div class="text-center py-4 text-muted">暂无新消息</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

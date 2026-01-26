@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ target_user.nickname|default:target_user.username }} 的主页{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 text-center p-4">
+            <div class="mb-3">
+                {% if target_user.avatar %}
+                    <img src="{{ target_user.avatar.url }}" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+                        {{ target_user.username.0|upper }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <h3 class="fw-bold mb-1">{{ target_user.nickname|default:target_user.username }}</h3>
+            <p class="text-muted small mb-3">加入于 {{ target_user.date_joined|date:"Y-m-d" }}</p>
+            
+            <div class="d-flex justify-content-center mb-4 text-center bg-light py-2 rounded">
+                <a href="{% url 'user_app:following_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
+                    <div class="h5 fw-bold mb-0">{{ following_count }}</div>
+                    <small class="text-muted">关注</small>
+                </a>
+                
+                <a href="{% url 'user_app:followers_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
+                    <div class="h5 fw-bold mb-0">{{ followers_count }}</div>
+                    <small class="text-muted">粉丝</small>
+                </a>
+                
+                <div class="px-3">
+                    <div class="h5 fw-bold mb-0">{{ user_posts.count }}</div>
+                    <small class="text-muted">帖子</small>
+                </div>
+            </div>
+
+            {% if target_user.bio %}
+                <p class="text-secondary fst-italic px-2 mb-4">"{{ target_user.bio }}"</p>
+            {% endif %}
+
+            {% if user.is_authenticated and user != target_user %}
+                <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
+                    {% csrf_token %}
+                    {% if is_following %}
+                        <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                            已关注 (点击取关)
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
+                            + 关注 TA
+                        </button>
+                    {% endif %}
+                </form>
+            {% elif user == target_user %}
+                <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <h5 class="mb-3 ps-2 border-start border-4 border-primary">TA 发布的帖子</h5>
+        
+        {% for post in user_posts %}
+        <div class="card shadow-sm mb-3 border-0 hover-shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <h5 class="card-title mb-1">
+                        <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link">
+                            {{ post.title }}
+                        </a>
+                    </h5>
+                    <small class="text-muted">{{ post.created_at|date:"m-d" }}</small>
+                </div>
+                <p class="card-text text-secondary text-truncate small">{{ post.content }}</p>
+                <div class="mt-2 text-muted small">
+                    <span class="me-3">👁️ {{ post.views }}</span>
+                    <span class="me-3">❤️ {{ post.likes.count }}</span>
+                    <span>💬 {{ post.comments.count }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
+            <p class="mb-0">这个人很懒，什么都没写。</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

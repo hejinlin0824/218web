@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - 社区{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'community:post_list' %}">社区首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">帖子详情</li>
+            </ol>
+        </nav>
+
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-body p-4">
+                <h2 class="card-title fw-bold mb-3">{{ post.title }}</h2>
+                
+                <div class="d-flex align-items-center mb-4 text-muted small">
+                    <div class="d-flex align-items-center me-3">
+                        <a href="{% url 'user_app:public_profile' post.author.pk %}" class="text-decoration-none d-flex align-items-center text-dark">
+                            {% if post.author.avatar %}
+                                <img src="{{ post.author.avatar.url }}" class="rounded-circle me-2" width="24" height="24">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                    {{ post.author.username.0|upper }}
+                                </div>
+                            {% endif %}
+                            <span class="fw-bold">{{ post.author.nickname|default:post.author.username }}</span>
+                        </a>
+                    </div>
+                    <span class="me-2">·</span>
+                    <span>{{ post.created_at|date:"Y-m-d H:i" }}</span>
+                    <span class="me-2">·</span>
+                    <span>👁️ {{ post.views }} 次浏览</span>
+                </div>
+                <div class="card-text fs-5 lh-lg" style="white-space: pre-wrap;">{{ post.content }}</div>
+            </div>
+            
+            <div class="card-footer bg-white border-top-0 pb-3 pt-0">
+                <div class="d-flex align-items-center">
+                    <form action="{% url 'community:like_post' post.pk %}" method="post">
+                        {% csrf_token %}
+                        {% if is_liked %}
+                            <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3">
+                                ❤️ 已赞 {{ post.likes.count }}
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                🤍 点赞 {{ post.likes.count }}
+                            </button>
+                        {% endif %}
+                    </form>
+                    <small class="text-muted ms-3">
+                        {{ post.likes.count }} 人觉得很赞
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0" id="comments-section">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">评论 ({{ post.comments.count }})</h5>
+            </div>
+            <div class="card-body">
+                
+                {% if user.is_authenticated %}
+                <div class="mb-5">
+                    <form method="post" id="commentForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="parent_id" id="parentIdField" value="">
+
+                        <div id="replyAlert" class="alert alert-info py-2 d-none align-items-center justify-content-between">
+                            <small>
+                                ↩️ 正在回复 <strong id="replyTarget">某人</strong>
+                            </small>
+                            <button type="button" class="btn-close btn-sm" onclick="cancelReply()"></button>
+                        </div>
+
+                        <div class="mb-2">
+                            {{ form.content }}
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary px-4">发表评论</button>
+                        </div>
+                    </form>
+                </div>
+                {% else %}
+                <div class="alert alert-warning text-center mb-4">
+                    请 <a href="{% url 'user_app:login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">登录</a> 后参与讨论
+                </div>
+                {% endif %}
+
+                <div class="list-group list-group-flush">
+                    {% for comment in comments %}
+                    <div class="list-group-item px-0 border-bottom-0 mb-3" id="comment-{{ comment.id }}">
+                        <div class="d-flex">
+                            
+                            <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="flex-shrink-0 me-3 text-decoration-none">
+                                {% if comment.author.avatar %}
+                                    <img src="{{ comment.author.avatar.url }}" class="rounded-circle" width="48" height="48">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.2rem;">
+                                        {{ comment.author.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                            </a>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div>
+                                        <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold me-2 text-decoration-none text-dark">
+                                            {{ comment.author.nickname|default:comment.author.username }}
+                                        </a>
+                                        <small class="text-muted">{{ comment.created_at|timesince }}前</small>
+                                    </div>
+                                    {% if user.is_authenticated %}
+                                    <button class="btn btn-link btn-sm text-decoration-none p-0 text-muted" 
+                                            onclick="setReply('{{ comment.id }}', '{{ comment.author.nickname|default:comment.author.username }}')">
+                                        ↩️ 回复
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                
+                                <p class="mb-2 text-dark">{{ comment.content }}</p>
+
+                                {% if comment.replies.all %}
+                                <div class="bg-light p-3 rounded-3 mt-2">
+                                    {% for reply in comment.replies.all %}
+                                    <div class="d-flex mb-2" id="comment-{{ reply.id }}">
+                                        
+                                        <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="me-2 text-decoration-none">
+                                            {% if reply.author.avatar %}
+                                                <img src="{{ reply.author.avatar.url }}" class="rounded-circle" width="24" height="24">
+                                            {% else %}
+                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 10px;">
+                                                    {{ reply.author.username.0|upper }}
+                                                </div>
+                                            {% endif %}
+                                        </a>
+                                        <div class="flex-grow-1">
+                                            <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="fw-bold small text-decoration-none text-dark">
+                                                {{ reply.author.nickname|default:reply.author.username }}
+                                            </a>
+                                            <span class="text-muted small mx-1">回复</span>
+                                            
+                                            <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold small text-primary text-decoration-none">
+                                                @{{ comment.author.nickname|default:comment.author.username }}
+                                            </a>
+
+                                            <span class="text-muted small ms-2">{{ reply.created_at|timesince }}前</span>
+                                            
+                                            {% if user.is_authenticated %}
+                                            <button class="btn btn-link btn-sm text-decoration-none p-0 ms-2 text-primary small" style="font-size: 0.8rem;"
+                                                    onclick="setReply('{{ reply.id }}', '{{ reply.author.nickname|default:reply.author.username }}')">
+                                                ↩️ 回复
+                                            </button>
+                                            {% endif %}
+
+                                            <p class="mb-0 small text-secondary mt-1 text-break">{{ reply.content }}</p>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="display-4 mb-2">🛋️</div>
+                        <p>还没有人评论，快来抢沙发！</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function setReply(commentId, authorName) {
+        document.getElementById('parentIdField').value = commentId;
+        document.getElementById('replyTarget').innerText = authorName;
+        const alertBox = document.getElementById('replyAlert');
+        alertBox.classList.remove('d-none');
+        alertBox.classList.add('d-flex');
+        
+        const textarea = document.querySelector('textarea[name="content"]');
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function cancelReply() {
+        document.getElementById('parentIdField').value = '';
+        const alertBox = document.getElementById('replyAlert');
+        alertBox.classList.add('d-none');
+        alertBox.classList.remove('d-flex');
+    }
+</script>
+{% endblock %}
