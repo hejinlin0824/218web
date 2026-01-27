@@ -41,18 +41,24 @@
             {% endif %}
 
             {% if user.is_authenticated and user != target_user %}
-                <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
-                    {% csrf_token %}
-                    {% if is_following %}
-                        <button type="submit" class="btn btn-secondary w-100 rounded-pill">
-                            已关注 (点击取关)
-                        </button>
-                    {% else %}
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
-                            + 关注 TA
-                        </button>
-                    {% endif %}
-                </form>
+                <div class="d-grid gap-2">
+                    <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
+                        {% csrf_token %}
+                        {% if is_following %}
+                            <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                                已关注 (点击取关)
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
+                                + 关注 TA
+                            </button>
+                        {% endif %}
+                    </form>
+                    
+                    <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary rounded-pill">
+                        ✉️ 发私信
+                    </a>
+                </div>
             {% elif user == target_user %}
                 <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
             {% endif %}

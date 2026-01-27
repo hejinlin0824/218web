@@ -29,6 +29,9 @@ urlpatterns = [
     path('trends/', include('Github_trend.urls')),
     path('community/', include('community.urls')), # 👈 新增
     path('notifications/', include('notifications.urls')),
+    # 👇 新增：搜索路由
+    path('search/', include('haystack.urls')),
+    path('messages/', include('direct_messages.urls')), # 👈 新增
 ]
 
 # 👇 这一段是让开发环境能访问上传的图片（头像）

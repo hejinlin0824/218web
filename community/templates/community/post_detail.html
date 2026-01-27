@@ -15,6 +15,19 @@
 
         <div class="card shadow-sm mb-4 border-0">
             <div class="card-body p-4">
+                
+                <div class="mb-2">
+                    {% for tag in post.tags.all %}
+                        <a href="{% url 'community:post_list' %}?tag={{ tag.slug }}" 
+                           class="badge text-decoration-none me-1" 
+                           
+                           style="background-color: {{ tag.color }}; color: white;">
+                            {{ tag.name }}
+                        </a>
+                    {% empty %}
+                        {% endfor %}
+                </div>
+
                 <h2 class="card-title fw-bold mb-3">{{ post.title }}</h2>
                 
                 <div class="d-flex align-items-center mb-4 text-muted small">
@@ -35,7 +48,32 @@
                     <span class="me-2">·</span>
                     <span>👁️ {{ post.views }} 次浏览</span>
                 </div>
-                <div class="card-text fs-5 lh-lg" style="white-space: pre-wrap;">{{ post.content }}</div>
+
+                <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
+                <script src="https://unpkg.com/vditor/dist/method.min.js"></script>
+
+                <div id="markdown-preview" class="vditor-reset fs-5 lh-lg"></div>
+
+                {{ post.content|json_script:"post-content-data" }}
+
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        try {
+                            // 从隐藏的 script 标签读取数据，防止引号转义错误
+                            const markdownText = JSON.parse(document.getElementById('post-content-data').textContent);
+                            
+                            // 调用 Vditor 的预览方法
+                            Vditor.preview(document.getElementById('markdown-preview'), markdownText, {
+                                mode: 'light',
+                                anchor: 1, // 启用标题锚点
+                                math: { engine: 'KaTeX' }, // 启用数学公式
+                                hljs: { style: 'github' }, // 代码高亮风格
+                            });
+                        } catch (e) {
+                            console.error("Markdown 渲染失败:", e);
+                        }
+                    });
+                </script>
             </div>
             
             <div class="card-footer bg-white border-top-0 pb-3 pt-0">
@@ -96,16 +134,16 @@
                     {% for comment in comments %}
                     <div class="list-group-item px-0 border-bottom-0 mb-3" id="comment-{{ comment.id }}">
                         <div class="d-flex">
-                            
                             <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="flex-shrink-0 me-3 text-decoration-none">
                                 {% if comment.author.avatar %}
-                                    <img src="{{ comment.author.avatar.url }}" class="rounded-circle" width="48" height="48">
+                                    <img src="{{ comment.author.avatar.url }}" class="rounded-circle" width="48" height="48" style="object-fit: cover;">
                                 {% else %}
                                     <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.2rem;">
                                         {{ comment.author.username.0|upper }}
                                     </div>
                                 {% endif %}
                             </a>
+                            
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <div>
@@ -114,24 +152,24 @@
                                         </a>
                                         <small class="text-muted">{{ comment.created_at|timesince }}前</small>
                                     </div>
+                                    
                                     {% if user.is_authenticated %}
                                     <button class="btn btn-link btn-sm text-decoration-none p-0 text-muted" 
                                             onclick="setReply('{{ comment.id }}', '{{ comment.author.nickname|default:comment.author.username }}')">
-                                        ↩️ 回复
+                                            ↩️ 回复
                                     </button>
                                     {% endif %}
                                 </div>
                                 
-                                <p class="mb-2 text-dark">{{ comment.content }}</p>
+                                <p class="mb-2 text-dark text-break">{{ comment.content }}</p>
 
                                 {% if comment.replies.all %}
                                 <div class="bg-light p-3 rounded-3 mt-2">
                                     {% for reply in comment.replies.all %}
                                     <div class="d-flex mb-2" id="comment-{{ reply.id }}">
-                                        
                                         <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="me-2 text-decoration-none">
                                             {% if reply.author.avatar %}
-                                                <img src="{{ reply.author.avatar.url }}" class="rounded-circle" width="24" height="24">
+                                                <img src="{{ reply.author.avatar.url }}" class="rounded-circle" width="24" height="24" style="object-fit: cover;">
                                             {% else %}
                                                 <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 10px;">
                                                     {{ reply.author.username.0|upper }}
@@ -143,20 +181,18 @@
                                                 {{ reply.author.nickname|default:reply.author.username }}
                                             </a>
                                             <span class="text-muted small mx-1">回复</span>
-                                            
                                             <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold small text-primary text-decoration-none">
                                                 @{{ comment.author.nickname|default:comment.author.username }}
                                             </a>
-
                                             <span class="text-muted small ms-2">{{ reply.created_at|timesince }}前</span>
                                             
                                             {% if user.is_authenticated %}
                                             <button class="btn btn-link btn-sm text-decoration-none p-0 ms-2 text-primary small" style="font-size: 0.8rem;"
                                                     onclick="setReply('{{ reply.id }}', '{{ reply.author.nickname|default:reply.author.username }}')">
-                                                ↩️ 回复
+                                                    ↩️ 回复
                                             </button>
                                             {% endif %}
-
+                                            
                                             <p class="mb-0 small text-secondary mt-1 text-break">{{ reply.content }}</p>
                                         </div>
                                     </div>
@@ -173,26 +209,30 @@
                     </div>
                     {% endfor %}
                 </div>
-
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
+    // 点击“回复”按钮时的逻辑
     function setReply(commentId, authorName) {
+        // 1. 设置隐藏域的值 (告诉后端这是给谁的回复)
         document.getElementById('parentIdField').value = commentId;
+        // 2. 更新提示文案
         document.getElementById('replyTarget').innerText = authorName;
+        // 3. 显示提示条
         const alertBox = document.getElementById('replyAlert');
         alertBox.classList.remove('d-none');
         alertBox.classList.add('d-flex');
         
+        // 4. 聚焦到输入框并滚动
         const textarea = document.querySelector('textarea[name="content"]');
         textarea.focus();
         textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    // 点击“取消回复”时的逻辑
     function cancelReply() {
         document.getElementById('parentIdField').value = '';
         const alertBox = document.getElementById('replyAlert');

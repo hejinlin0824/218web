@@ -24,9 +24,10 @@
                             💬 评论了你的帖子: "{{ notice.content }}"
                         {% elif notice.verb == 'reply' %}
                             ↩️ 回复了你的评论: "{{ notice.content }}"
-                        
                         {% elif notice.verb == 'follow' %}
                             👤 关注了你
+                        {% elif notice.verb == 'system' %}
+                            🔔 {{ notice.content }}
                         {% endif %}
                     </p>
                 </a>

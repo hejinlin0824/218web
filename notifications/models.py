@@ -7,6 +7,7 @@ class Notification(models.Model):
         ('comment', '评论'),
         ('reply', '回复'),
         ('follow', '关注'), # 👈 新增这一行
+        ('system', '系统通知')
     )
     
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications', verbose_name='接收者')

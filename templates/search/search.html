@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load highlight %} {% load community_extras %} {% block title %}搜索结果 - 218 实验室{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        
+        <div class="card shadow-sm border-0 mb-4 bg-light">
+            <div class="card-body">
+                <form method="get" action="." class="d-flex gap-2">
+                    <input type="text" name="q" class="form-control form-control-lg" 
+                           placeholder="输入关键词搜索全站内容..." value="{{ query }}">
+                    <button type="submit" class="btn btn-primary px-4">搜索</button>
+                </form>
+            </div>
+        </div>
+
+        {% if query %}
+            <h4 class="mb-4">
+                🔍 关于 "<span class="text-primary">{{ query }}</span>" 的搜索结果 
+                <small class="text-muted fs-6">({{ page.paginator.count }} 条)</small>
+            </h4>
+
+            <div class="list-group shadow-sm">
+                {% for result in page.object_list %}
+                    <div class="list-group-item list-group-item-action p-4 border-start-0 border-end-0">
+                        <div class="d-flex w-100 justify-content-between mb-2">
+                            <h5 class="mb-1">
+                                <a href="{% url 'community:post_detail' result.object.pk %}" class="text-decoration-none text-dark fw-bold">
+                                    {% highlight result.object.title with query %}
+                                </a>
+                            </h5>
+                            <small class="text-muted">{{ result.object.created_at|date:"Y-m-d" }}</small>
+                        </div>
+                        
+                        <p class="mb-1 text-secondary">
+                            {% with cleaned_content=result.object.content|md_to_text %}
+                                {% highlight cleaned_content with query max_length 150 %}
+                            {% endwith %}
+                        </p>
+                        
+                        <small class="text-muted">
+                            作者: {{ result.object.author.nickname|default:result.object.author.username }} 
+                            · 👁️ {{ result.object.views }}
+                        </small>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-5">
+                        <div class="display-1 text-muted opacity-25">🦕</div>
+                        <p class="lead text-muted mt-3">没有找到相关内容</p>
+                        <p class="text-muted small">换个关键词试试？</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if page.has_previous or page.has_next %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ query }}&page={{ page.previous_page_number }}">上一页</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page.number }}</span>
+                    </li>
+                    
+                    {% if page.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ query }}&page={{ page.next_page_number }}">下一页</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <p>请输入关键词开始搜索</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

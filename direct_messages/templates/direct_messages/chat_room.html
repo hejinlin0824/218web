@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}与 {{ target_user.nickname|default:target_user.username }} 的对话{% endblock %}
+
+{# 屏蔽全局消息弹窗 #}
+{% block messages %}{% endblock %}
+
+{% block content %}
+<style>
+    /* === 聊天气泡核心样式 === */
+    .chat-container {
+        background-color: #f5f5f5; /* 类似微信的浅灰背景 */
+    }
+
+    /* 通用气泡样式 */
+    .chat-bubble {
+        padding: 10px 14px;
+        max-width: 75%;
+        position: relative;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 微弱阴影 */
+    }
+
+    /* 我发的消息 (右侧) */
+    .chat-bubble-me {
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7); /* 渐变蓝 */
+        color: white;
+        /* 左上、右上、右下(尖角)、左下 */
+        border-radius: 12px 12px 2px 12px;
+        margin-left: 10px;
+    }
+
+    /* 对方发的消息 (左侧) */
+    .chat-bubble-other {
+        background-color: white;
+        color: #333;
+        border: 1px solid #e5e5e5; /* 极细边框 */
+        /* 左上(尖角)、右上、右下、左下 */
+        border-radius: 2px 12px 12px 12px;
+        margin-right: 10px;
+    }
+
+    /* 时间戳样式 */
+    .chat-time {
+        display: block;
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.7;
+        text-align: right;
+    }
+
+    /* 头像样式 */
+    .chat-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px; /* 方形圆角头像，更像微信 */
+        object-fit: cover;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    /* 👇👇👇 新增：移动端适配 👇👇👇 */
+    @media (max-width: 768px) {
+        /* 1. 让卡片铺满剩余高度，去掉圆角和边框，像原生 App 一样 */
+        .card {
+            height: calc(100vh - 80px) !important; /* 减去顶部导航栏高度 */
+            border: none !important;
+            border-radius: 0 !important;
+        }
+        
+        /* 2. 调整内边距，手机寸土寸金 */
+        .card-body {
+            padding: 10px;
+        }
+
+        /* 3. 气泡最大宽度稍微变大一点，因为手机屏窄 */
+        .chat-bubble {
+            max-width: 85%;
+        }
+        
+        /* 4. 隐藏面包屑或不重要的按钮，节省空间 */
+        .btn-light {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        
+        /* 5. 调整底部输入栏 */
+        .card-footer {
+            padding: 8px;
+            position: fixed; /* 固定在底部，防止键盘顶起布局乱掉 */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        
+        /* 为了防止内容被固定的底部遮挡，给内容区加个底部 margin */
+        #chatBox {
+            padding-bottom: 70px; 
+        }
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0" style="height: 80vh;">
+            
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center">
+                <a href="{% url 'direct_messages:inbox' %}" class="btn btn-sm btn-light me-3 text-secondary">
+                    <i class="bi bi-chevron-left"></i> 返回
+                </a>
+                <h6 class="mb-0 flex-grow-1 fw-bold text-center">
+                    {{ target_user.nickname|default:target_user.username }}
+                </h6>
+                <a href="{% url 'user_app:public_profile' target_user.pk %}" class="btn btn-sm btn-light text-primary">
+                    主页
+                </a>
+            </div>
+
+            <div class="card-body overflow-auto chat-container" id="chatBox">
+                <div class="d-flex flex-column gap-3" id="chatListContainer">
+                    {% for msg in messages %}
+                        {% if msg.sender == user %}
+                            <div class="d-flex justify-content-end align-items-start">
+                                <div class="chat-bubble chat-bubble-me">
+                                    {{ msg.content }}
+                                    <span class="chat-time text-white-50">{{ msg.timestamp|date:"H:i" }}</span>
+                                </div>
+                                <div class="ms-2">
+                                    {% if user.avatar %}
+                                        <img src="{{ user.avatar.url }}" class="chat-avatar">
+                                    {% else %}
+                                        <div class="chat-avatar bg-primary text-white d-flex align-items-center justify-content-center fw-bold">
+                                            {{ user.username.0|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="d-flex justify-content-start align-items-start">
+                                <div class="me-2">
+                                    {% if target_user.avatar %}
+                                        <img src="{{ target_user.avatar.url }}" class="chat-avatar">
+                                    {% else %}
+                                        <div class="chat-avatar bg-secondary text-white d-flex align-items-center justify-content-center fw-bold">
+                                            {{ target_user.username.0|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="chat-bubble chat-bubble-other">
+                                    {{ msg.content }}
+                                    <span class="chat-time text-muted">{{ msg.timestamp|date:"H:i" }}</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% empty %}
+                        <div class="text-center text-muted py-5" id="emptyPlaceholder">
+                            <small class="bg-white px-3 py-1 rounded shadow-sm">👋 开始新的对话吧</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card-footer bg-white py-3 border-top">
+                <form method="post" id="chatForm" class="d-flex gap-2 align-items-end">
+                    {% csrf_token %}
+                    <textarea name="content" id="msgInput" class="form-control bg-light border-0" rows="1" 
+                              placeholder="发消息..." required 
+                              style="resize: none; border-radius: 20px; padding: 10px 15px; max-height: 100px;" 
+                              oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                    
+                    <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
+                            id="sendBtn" style="width: 40px; height: 40px; min-width: 40px;">
+                        <span style="font-size: 1.2rem; margin-top: -2px;">➤</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function scrollToBottom() {
+        const chatBox = document.getElementById('chatBox');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    window.onload = scrollToBottom;
+
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('msgInput');
+    const container = document.getElementById('chatListContainer');
+    const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+
+    // 处理回车发送
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const content = input.value;
+        if (!content.trim()) return;
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'direct_messages:chat_room' target_user.id %}", {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                if (emptyPlaceholder) emptyPlaceholder.remove();
+
+                // 获取头像 URL (如果没有头像，显示首字母)
+                let avatarHtml = '';
+                if (data.avatar_url) {
+                    avatarHtml = `<img src="${data.avatar_url}" class="chat-avatar">`;
+                } else {
+                    const initial = data.username_char || 'U';
+                    avatarHtml = `<div class="chat-avatar bg-primary text-white d-flex align-items-center justify-content-center fw-bold">${initial}</div>`;
+                }
+
+                // 2. 构建新消息 HTML (必须与上面的 CSS 类一致)
+                // 这里加了 animate.css 的动画效果
+                const msgHtml = `
+                    <div class="d-flex justify-content-end align-items-start animate__animated animate__fadeInUp animate__faster">
+                        <div class="chat-bubble chat-bubble-me">
+                            <div class="text-break" style="white-space: pre-wrap;">${data.content}</div>
+                            <span class="chat-time text-white-50">${data.timestamp}</span>
+                        </div>
+                        <div class="ms-2">
+                            ${avatarHtml}
+                        </div>
+                    </div>
+                `;
+
+                container.insertAdjacentHTML('beforeend', msgHtml);
+                input.value = '';
+                input.style.height = '';
+                scrollToBottom();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+</script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+{% endblock %}

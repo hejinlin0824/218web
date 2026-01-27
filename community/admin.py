@@ -1,16 +1,20 @@
 from django.contrib import admin
-from .models import Post, Comment
+from .models import Post, Comment, Tag
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug', 'color')
+    # 自动根据 name 生成 slug，方便操作
+    prepopulated_fields = {'slug': ('name',)}
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    # 后台列表显示哪些字段
     list_display = ('title', 'author', 'views', 'created_at')
-    # 侧边栏筛选功能
-    list_filter = ('created_at', 'author')
-    # 搜索框
+    list_filter = ('created_at', 'author', 'tags') # 👈 侧边栏增加标签筛选
     search_fields = ('title', 'content')
-    # 自动只读字段（防止手动改时间）
     readonly_fields = ('created_at', 'updated_at', 'views')
+    # 在后台编辑帖子时，使用水平过滤器选择标签，体验更好
+    filter_horizontal = ('tags',)
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):

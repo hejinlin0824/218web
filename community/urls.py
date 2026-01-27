@@ -12,4 +12,5 @@ urlpatterns = [
     # 👇 新增：详情页路由，<int:pk> 代表接收整数类型的 ID
     path('post/<int:pk>/', views.post_detail, name='post_detail'),
     path('post/<int:pk>/like/', views.like_post, name='like_post'),
+    path('upload/image/', views.upload_image, name='upload_image'), # 👈 新增
 ]

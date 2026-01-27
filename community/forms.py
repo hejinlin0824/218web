@@ -1,15 +1,23 @@
 from django import forms
-from .models import Post
-from .models import Post, Comment # 👈 记得导入 Comment
+from .models import Post, Comment, Tag
 
 class PostForm(forms.ModelForm):
+    # 自定义标签字段的显示方式
+    tags = forms.ModelMultipleChoiceField(
+        queryset=Tag.objects.all(),
+        widget=forms.CheckboxSelectMultiple, # 使用复选框，比下拉多选更直观
+        required=False,
+        label='选择标签'
+    )
+
     class Meta:
         model = Post
-        fields = ['title', 'content'] # 只让用户填这两个，作者自动填
+        fields = ['title', 'tags', 'content'] # 👈 确保 tags 在这里
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入标题'}),
             'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': '请输入内容...'}),
         }
+
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment

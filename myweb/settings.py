@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     'community', # 👈 新增：社区/论坛
     'notifications', # 👈 新增
     'news', # 👈 新增
+    # 👇 新增：全文检索框架
+    'haystack',
+    'direct_messages', # 👈 新增
 ]
 
 MIDDLEWARE = [
@@ -161,3 +164,37 @@ CACHES = {
     }
 }
 LOGIN_URL = 'user_app:login'
+
+
+# ==================================
+# Celery 配置
+# ==================================
+# Broker: 消息中间件，负责存储任务队列。这里使用 Redis。
+# 格式: redis://:密码@IP:端口/数据库号
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+
+# Backend: 结果存储后端，用于存储任务的执行结果（可选，如果不需要看结果可以不配）
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
+
+# 时区设置（跟随 Django）
+CELERY_TIMEZONE = TIME_ZONE
+
+# 防止死锁建议配置 (可选)
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 单个任务最大运行时间 (30分钟)
+
+# ==================================
+# Haystack + Whoosh 全文检索配置
+# ==================================
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        # 指定使用 Whoosh 引擎
+        'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
+        # 索引文件存储路径 (会自动创建)
+        'PATH': os.path.join(BASE_DIR, 'whoosh_index'),
+    },
+}
+
+# 自动更新索引 (当有新帖子发布/修改时，自动更新搜索索引)
+# 注意：这会轻微影响保存速度，如果数据量巨大建议用 Celery 异步更新
+HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'

@@ -3,14 +3,18 @@ from django.views.generic import ListView, CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
+from django.views.decorators.http import require_POST
+from django.conf import settings
+import os
+import uuid
+import time
 
-from .models import Post, Comment
+from .models import Post, Comment, Tag
 from .forms import PostForm, CommentForm
-# 引入通知模型
 from notifications.models import Notification
 
 # 1. 帖子列表视图
@@ -22,15 +26,20 @@ class PostListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        # 预加载作者信息，并统计评论数
-        queryset = Post.objects.select_related('author').annotate(comment_count=Count('comments'))
+        # 预加载作者和标签，防止 N+1 查询问题，同时统计评论数
+        queryset = Post.objects.select_related('author').prefetch_related('tags').annotate(comment_count=Count('comments'))
 
-        # 处理搜索
+        # 1. 标签筛选
+        tag_slug = self.request.GET.get('tag')
+        if tag_slug:
+            queryset = queryset.filter(tags__slug=tag_slug)
+
+        # 2. 搜索 (这里保留本地简单搜索逻辑，虽然后端模板表单指向了 Haystack，但保留这个逻辑作为 fallback)
         query = self.request.GET.get('q')
         if query:
             queryset = queryset.filter(Q(title__icontains=query) | Q(content__icontains=query))
 
-        # 处理时间筛选
+        # 3. 时间筛选
         time_filter = self.request.GET.get('filter')
         now = timezone.now()
         if time_filter == 'today':
@@ -47,6 +56,15 @@ class PostListView(ListView):
         context = super().get_context_data(**kwargs)
         context['current_filter'] = self.request.GET.get('filter', 'all')
         context['search_query'] = self.request.GET.get('q', '')
+        
+        # 传递当前选中的标签信息，用于UI提示
+        tag_slug = self.request.GET.get('tag')
+        if tag_slug:
+            # 如果标签不存在，get_object_or_404 会自动抛出 404
+            context['current_tag'] = get_object_or_404(Tag, slug=tag_slug)
+            
+        # 传递所有标签供侧边栏或其他地方使用 (可选)
+        context['all_tags'] = Tag.objects.all()
         return context
 
 # 2. 发布帖子视图
@@ -58,21 +76,21 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('community:post_list')
 
     def form_valid(self, form):
+        # 自动将当前登录用户设为作者
         form.instance.author = self.request.user
         return super().form_valid(form)
 
-# 3. 帖子详情视图 (核心逻辑)
+# 3. 帖子详情视图
 def post_detail(request, pk):
-    """帖子详情页：处理展示 + 评论 + 嵌套回复 + 通知"""
     post = get_object_or_404(Post, pk=pk)
     
-    # 检查点赞状态
+    # 检查当前用户是否已点赞
     is_liked = False
     if request.user.is_authenticated:
         if post.likes.filter(id=request.user.id).exists():
             is_liked = True
             
-    # 处理评论/回复提交
+    # 处理评论提交
     if request.method == 'POST':
         if not request.user.is_authenticated:
             return redirect('user_app:login')
@@ -83,48 +101,40 @@ def post_detail(request, pk):
             comment.post = post
             comment.author = request.user
             
-            # === 处理嵌套回复逻辑 ===
+            # 处理嵌套回复
             parent_id = request.POST.get('parent_id')
-            notification_recipient = None # 记录该给谁发通知
+            notification_recipient = None
 
             if parent_id:
                 try:
-                    # 获取用户点击“回复”的那条评论 (可能是爹，也可能是儿子)
                     target_comment = Comment.objects.get(id=parent_id)
-                    
+                    # 扁平化处理：如果回复的是子评论，则挂载到父评论下，但内容@原作者
                     if target_comment.parent:
-                        # Case A: 用户在回复一个“子评论” (无限套娃场景)
-                        # 策略：扁平化处理。把新评论挂在“爷爷”下面，但在内容里 @那个人
                         comment.parent = target_comment.parent
                         comment.content = f"回复 @{target_comment.author.nickname or target_comment.author.username}: {comment.content}"
                         notification_recipient = target_comment.author
                     else:
-                        # Case B: 用户直接回复“根评论”
                         comment.parent = target_comment
                         notification_recipient = target_comment.author
-
                 except Comment.DoesNotExist:
-                    pass # 如果找不到父评论，就当普通评论处理
+                    pass
             else:
-                # Case C: 直接评论帖子
+                # 如果是直接评论帖子，通知帖子作者
                 if post.author != request.user:
                     notification_recipient = post.author
 
-            # 先保存评论，生成 ID
             comment.save()
 
-            # === 发送通知 ===
+            # 发送通知
             if notification_recipient and notification_recipient != request.user:
-                # 判断动作类型
                 verb = 'reply' if parent_id else 'comment'
-                
                 Notification.objects.create(
                     recipient=notification_recipient,
                     actor=request.user,
                     verb=verb,
-                    # 锚点定位到新生成的这条评论
+                    # 锚点定位到新生成的评论
                     target_url=reverse('community:post_detail', args=[pk]) + f"#comment-{comment.id}",
-                    content=comment.content[:50] # 截取前50字
+                    content=comment.content[:50]
                 )
 
             return redirect('community:post_detail', pk=pk)
@@ -138,7 +148,7 @@ def post_detail(request, pk):
             post.save(update_fields=['views'])
             request.session[session_key] = True
 
-    # 只获取顶级评论 (parent=None)，子评论通过模板里的 comment.replies.all 获取
+    # 获取顶级评论
     comments = post.comments.filter(parent=None).order_by('-created_at')
 
     context = {
@@ -169,3 +179,47 @@ def like_post(request, pk):
             )
         
     return HttpResponseRedirect(reverse('community:post_detail', args=[str(pk)]))
+
+# 5. 图片上传视图 (Vditor 专用)
+@login_required
+@require_POST
+def upload_image(request):
+    if 'file[]' not in request.FILES:
+        return JsonResponse({'msg': '没有检测到文件', 'code': 1})
+
+    file_obj = request.FILES.get('file[]')
+    
+    # 简单的后缀名校验
+    if not file_obj.name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+         return JsonResponse({'msg': '仅支持图片文件', 'code': 1})
+
+    # 使用 UUID 生成文件名
+    ext = file_obj.name.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    date_path = time.strftime("%Y%m")
+    # 存储路径: media/posts/YYYYMM/uuid.ext
+    upload_dir = os.path.join(settings.MEDIA_ROOT, 'posts', date_path)
+    
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+        
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, 'wb+') as f:
+        for chunk in file_obj.chunks():
+            f.write(chunk)
+            
+    # 返回 URL
+    url = f"{settings.MEDIA_URL}posts/{date_path}/{filename}"
+    
+    # Vditor 要求的数据格式
+    return JsonResponse({
+        "msg": "上传成功",
+        "code": 0,
+        "data": {
+            "errFiles": [],
+            "succMap": {
+                file_obj.name: url
+            }
+        }
+    })
