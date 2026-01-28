@@ -9,8 +9,16 @@ urlpatterns = [
     
     # 发布新帖
     path('create/', views.PostCreateView.as_view(), name='post_create'),
-    # 👇 新增：详情页路由，<int:pk> 代表接收整数类型的 ID
+    
+    # 帖子详情页
     path('post/<int:pk>/', views.post_detail, name='post_detail'),
+    
+    # 帖子点赞 (Toggle)
     path('post/<int:pk>/like/', views.like_post, name='like_post'),
-    path('upload/image/', views.upload_image, name='upload_image'), # 👈 新增
+    
+    # 评论点赞 (Toggle) - 新增
+    path('comment/<int:pk>/like/', views.like_comment, name='like_comment'),
+    
+    # 图片上传 (Vditor编辑器用)
+    path('upload/image/', views.upload_image, name='upload_image'),
 ]

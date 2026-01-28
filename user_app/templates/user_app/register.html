@@ -10,29 +10,9 @@
             <div class="text-start">
                 <h1 class="display-4 fw-bold text-success mb-3">Join Us!</h1>
                 <p class="lead text-secondary mb-4">
-                    成为 Web 218 实验室的一员，开启你的技术之旅。
+                    成为 Web 218 实验室的一员。
                 </p>
-                
-                <div class="card border-0 bg-white shadow-sm mb-3">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="bg-light p-2 rounded-circle me-3">🚀</div>
-                        <div>
-                            <h6 class="fw-bold mb-0">快速成长</h6>
-                            <small class="text-muted">获取最新前沿资讯</small>
-                        </div>
-                    </div>
                 </div>
-
-                <div class="card border-0 bg-white shadow-sm">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="bg-light p-2 rounded-circle me-3">🛡️</div>
-                        <div>
-                            <h6 class="fw-bold mb-0">安全隐私</h6>
-                            <small class="text-muted">我们要先验证邮箱才能加入哦</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="col-md-5">
@@ -40,7 +20,6 @@
                 <div class="card-body p-5">
                     <div class="text-center mb-4">
                         <h3 class="fw-bold">📝 创建新账号</h3>
-                        <p class="text-muted small">只需几步，加入社区</p>
                     </div>
 
                     <form method="post">
@@ -48,28 +27,24 @@
                         
                         {% if form.errors %}
                             <div class="alert alert-danger small">
-                                请修正以下错误：
                                 {{ form.non_field_errors }}
+                                {% for field in form %}
+                                    {% if field.errors %}
+                                        <div>{{ field.label }}: {{ field.errors.0 }}</div>
+                                    {% endif %}
+                                {% endfor %}
                             </div>
                         {% endif %}
 
                         {% for field in form %}
-                            <div class="form-floating mb-3">
-                                <input type="{{ field.field.widget.input_type }}" 
-                                       name="{{ field.name }}" 
-                                       class="form-control bg-light border-0 {% if field.errors %}is-invalid{% endif %}" 
-                                       id="{{ field.id_for_label }}" 
-                                       placeholder="{{ field.label }}"
-                                       {% if field.value %}value="{{ field.value }}"{% endif %}
-                                       required>
+                            <div class="form-floating mb-3" id="div_{{ field.name }}" 
+                                 style="{% if field.name == 'student_id' %}display:none;{% endif %}">
+                                
+                                {{ field }}
                                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                
                                 {% if field.help_text %}
                                     <div class="form-text small ms-1">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% if field.errors %}
-                                    <div class="invalid-feedback">
-                                        {{ field.errors.0 }}
-                                    </div>
                                 {% endif %}
                             </div>
                         {% endfor %}
@@ -79,10 +54,6 @@
                                 立即注册
                             </button>
                         </div>
-                        
-                        <p class="text-center text-muted small mt-3">
-                            点击注册即代表您同意实验室的 <a href="#" class="text-decoration-none">用户协议</a>
-                        </p>
                     </form>
                 </div>
                 <div class="card-footer bg-white border-top-0 text-center py-3 rounded-bottom-4">
@@ -93,4 +64,33 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSelect = document.getElementById('id_status');
+        const studentIdDiv = document.getElementById('div_student_id');
+        const studentIdInput = document.getElementById('id_student_id');
+
+        function toggleStudentId() {
+            if (statusSelect.value === 'student') {
+                studentIdDiv.style.display = 'block';
+                // 加个简单的淡入效果
+                studentIdDiv.style.opacity = 0;
+                setTimeout(() => studentIdDiv.style.opacity = 1, 50);
+                studentIdDiv.style.transition = 'opacity 0.3s';
+                studentIdInput.required = true; // 开启前端必填校验
+            } else {
+                studentIdDiv.style.display = 'none';
+                studentIdInput.value = ''; // 切换回新生时清空输入
+                studentIdInput.required = false;
+            }
+        }
+
+        // 初始化运行一次（处理表单报错回显的情况）
+        toggleStudentId();
+
+        // 监听变化
+        statusSelect.addEventListener('change', toggleStudentId);
+    });
+</script>
 {% endblock %}

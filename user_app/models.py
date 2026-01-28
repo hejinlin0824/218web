@@ -4,27 +4,44 @@ import uuid
 import os
 
 def user_avatar_path(instance, filename):
-    # 获取文件扩展名 (例如 .jpg)
-    ext = filename.split('.')[-1]
     # 使用 UUID 生成唯一文件名 (例如 550e8400-e29b....jpg)
+    ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
-    # 返回路径: avatars/uuid.jpg
     return os.path.join('avatars', filename)
 
-class CustomUser(AbstractUser):
-    # 覆盖原生 email，改为唯一且必填
-    email = models.EmailField(unique=True, verbose_name='邮箱地址')
+# 学号白名单模型 (由管理员导入)
+class StudentWhitelist(models.Model):
+    student_id = models.CharField('学号', max_length=20, unique=True)
+    name = models.CharField('真实姓名', max_length=50, blank=True, help_text="选填，用于管理员备注")
     
-    # 新增字段
+    class Meta:
+        verbose_name = '学号白名单'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.student_id} ({self.name})"
+
+# 自定义用户模型
+class CustomUser(AbstractUser):
+    # 定义身份状态常量
+    STATUS_CHOICES = (
+        ('newbie', '🌱 新生'),
+        ('student', '🎓 在读'),
+        ('alumni', '🏆 毕业'),
+    )
+
+    # 基础信息
+    email = models.EmailField(unique=True, verbose_name='邮箱地址')
     nickname = models.CharField(max_length=50, blank=True, verbose_name='昵称')
     bio = models.TextField(max_length=500, blank=True, verbose_name='个人简介')
     avatar = models.ImageField(upload_to=user_avatar_path, blank=True, null=True, verbose_name='头像')
-    
-    # 业务字段：记录是否验证了邮箱
     email_verified = models.BooleanField(default=False, verbose_name='邮箱已验证')
-    # 👇 新增：关注系统
-    # symmetrical=False 很关键：我关注你，你不一定关注我（微博模式，而不是微信好友模式）
-    # related_name='followers': 反向查询名字，查询 user.followers.all() 就能知道谁关注了我
+    
+    # 身份认证信息
+    status = models.CharField('当前身份', max_length=10, choices=STATUS_CHOICES, default='newbie')
+    student_id = models.CharField('学号', max_length=20, blank=True, null=True, unique=True, help_text="认证通过后绑定")
+
+    # 社交关系
     following = models.ManyToManyField(
         'self', 
         symmetrical=False, 
@@ -32,9 +49,40 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name='关注的人'
     )
+
+    # 成长体系 (Gamification)
+    coins = models.PositiveIntegerField('硬币', default=0)
+    growth = models.PositiveIntegerField('成长值', default=0)
+    level = models.PositiveIntegerField('等级', default=1)
+
     class Meta:
         verbose_name = '用户'
         verbose_name_plural = verbose_name
 
     def __str__(self):
         return self.username
+
+    def earn_rewards(self, coins=0, growth=0):
+        """
+        增加硬币和成长值，并自动计算升级
+        升级公式: 线性升级，每100成长值升1级
+        """
+        self.coins += coins
+        self.growth += growth
+        
+        # 计算新等级 (100分一级: 0-99=Lv1, 100-199=Lv2)
+        new_level = 1 + (self.growth // 100)
+        
+        if new_level > self.level:
+            self.level = new_level
+            # 这里可以扩展升级通知逻辑
+        
+        self.save()
+    # 👇👇👇 新增这个属性 👇👇👇
+    @property
+    def level_progress(self):
+        """
+        计算当前等级的进度百分比 (0-100)
+        假设每 100 成长值升 1 级
+        """
+        return self.growth % 100

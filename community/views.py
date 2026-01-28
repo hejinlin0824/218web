@@ -19,27 +19,29 @@ from notifications.models import Notification
 
 # 1. 帖子列表视图
 class PostListView(ListView):
-    """帖子列表页：支持搜索、筛选、聚合统计"""
+    """
+    社区首页：支持标签筛选、搜索、时间筛选
+    """
     model = Post
     template_name = 'community/post_list.html'
     context_object_name = 'posts'
     paginate_by = 10
 
     def get_queryset(self):
-        # 预加载作者和标签，防止 N+1 查询问题，同时统计评论数
+        # 预加载作者和标签，统计评论数，防止 N+1 查询
         queryset = Post.objects.select_related('author').prefetch_related('tags').annotate(comment_count=Count('comments'))
-
-        # 1. 标签筛选
+        
+        # 标签筛选
         tag_slug = self.request.GET.get('tag')
         if tag_slug:
             queryset = queryset.filter(tags__slug=tag_slug)
-
-        # 2. 搜索 (这里保留本地简单搜索逻辑，虽然后端模板表单指向了 Haystack，但保留这个逻辑作为 fallback)
+            
+        # 关键词搜索
         query = self.request.GET.get('q')
         if query:
             queryset = queryset.filter(Q(title__icontains=query) | Q(content__icontains=query))
-
-        # 3. 时间筛选
+            
+        # 时间筛选
         time_filter = self.request.GET.get('filter')
         now = timezone.now()
         if time_filter == 'today':
@@ -48,8 +50,7 @@ class PostListView(ListView):
             queryset = queryset.filter(created_at__gte=now - timedelta(weeks=1))
         elif time_filter == 'month':
             queryset = queryset.filter(created_at__gte=now - timedelta(days=30))
-
-        # 默认按时间倒序
+            
         return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
@@ -57,34 +58,35 @@ class PostListView(ListView):
         context['current_filter'] = self.request.GET.get('filter', 'all')
         context['search_query'] = self.request.GET.get('q', '')
         
-        # 传递当前选中的标签信息，用于UI提示
         tag_slug = self.request.GET.get('tag')
         if tag_slug:
-            # 如果标签不存在，get_object_or_404 会自动抛出 404
             context['current_tag'] = get_object_or_404(Tag, slug=tag_slug)
             
-        # 传递所有标签供侧边栏或其他地方使用 (可选)
         context['all_tags'] = Tag.objects.all()
         return context
 
 # 2. 发布帖子视图
 class PostCreateView(LoginRequiredMixin, CreateView):
-    """发布帖子页"""
     model = Post
     form_class = PostForm
     template_name = 'community/post_form.html'
     success_url = reverse_lazy('community:post_list')
 
     def form_valid(self, form):
-        # 自动将当前登录用户设为作者
         form.instance.author = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        
+        # 🎉 奖励机制：发帖
+        # 奖励：20 成长值, 2 硬币
+        self.request.user.earn_rewards(coins=2, growth=20)
+        
+        return response
 
-# 3. 帖子详情视图
+# 3. 帖子详情视图 (包含评论逻辑)
 def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
     
-    # 检查当前用户是否已点赞
+    # 检查当前用户是否已点赞帖子
     is_liked = False
     if request.user.is_authenticated:
         if post.likes.filter(id=request.user.id).exists():
@@ -108,7 +110,7 @@ def post_detail(request, pk):
             if parent_id:
                 try:
                     target_comment = Comment.objects.get(id=parent_id)
-                    # 扁平化处理：如果回复的是子评论，则挂载到父评论下，但内容@原作者
+                    # 扁平化处理：始终挂载到第一级评论下，但在内容中 @原作者
                     if target_comment.parent:
                         comment.parent = target_comment.parent
                         comment.content = f"回复 @{target_comment.author.nickname or target_comment.author.username}: {comment.content}"
@@ -124,6 +126,10 @@ def post_detail(request, pk):
                     notification_recipient = post.author
 
             comment.save()
+
+            # 🎉 奖励机制：主动评论
+            # 奖励：5 成长值, 1 硬币
+            request.user.earn_rewards(coins=1, growth=5)
 
             # 发送通知
             if notification_recipient and notification_recipient != request.user:
@@ -159,17 +165,33 @@ def post_detail(request, pk):
     }
     return render(request, 'community/post_detail.html', context)
 
-# 4. 点赞视图
+# 4. 点赞帖子视图
 @login_required
 def like_post(request, pk):
     post = get_object_or_404(Post, pk=pk)
     
     if post.likes.filter(id=request.user.id).exists():
+        # 取消点赞
         post.likes.remove(request.user)
+        # 注意：取消点赞不扣除已获得的奖励，防止“负资产”体验
     else:
+        # 添加点赞
         post.likes.add(request.user)
-        # 发送点赞通知
-        if post.author != request.user:
+        
+        # 🎉 奖励机制：被点赞
+        # 只有当 点赞者 不是 作者本人 时才触发
+        if post.author != request.user: 
+            if not post.is_first_like_rewarded:
+                # 🚀 首赞大奖：100 成长值, 5 硬币
+                post.author.earn_rewards(coins=5, growth=100)
+                # 标记已发放首赞奖励
+                post.is_first_like_rewarded = True
+                post.save(update_fields=['is_first_like_rewarded'])
+            else:
+                # 🐟 普通点赞：10 成长值, 2 硬币
+                post.author.earn_rewards(coins=2, growth=10)
+
+            # 发送通知
             Notification.objects.create(
                 recipient=post.author,
                 actor=request.user,
@@ -180,7 +202,34 @@ def like_post(request, pk):
         
     return HttpResponseRedirect(reverse('community:post_detail', args=[str(pk)]))
 
-# 5. 图片上传视图 (Vditor 专用)
+# 5. 点赞评论视图 (新增)
+@login_required
+def like_comment(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    
+    if comment.likes.filter(id=request.user.id).exists():
+        comment.likes.remove(request.user)
+    else:
+        comment.likes.add(request.user)
+        
+        # 🎉 奖励机制：评论被点赞
+        # 奖励：5 成长值, 1 硬币
+        if comment.author != request.user:
+            comment.author.earn_rewards(coins=1, growth=5)
+            
+            # (可选) 发通知：赞了你的评论
+            Notification.objects.create(
+                recipient=comment.author,
+                actor=request.user,
+                verb='like',
+                target_url=reverse('community:post_detail', args=[comment.post.pk]) + f"#comment-{comment.id}",
+                content='赞了你的评论'
+            )
+            
+    # 跳回帖子详情页，并定位到该评论
+    return HttpResponseRedirect(reverse('community:post_detail', args=[comment.post.pk]) + f"#comment-{comment.id}")
+
+# 6. 图片上传视图 (Vditor 专用)
 @login_required
 @require_POST
 def upload_image(request):
@@ -189,15 +238,16 @@ def upload_image(request):
 
     file_obj = request.FILES.get('file[]')
     
-    # 简单的后缀名校验
-    if not file_obj.name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+    # 后缀名校验
+    if not file_obj.name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
          return JsonResponse({'msg': '仅支持图片文件', 'code': 1})
 
-    # 使用 UUID 生成文件名
+    # 使用 UUID 重命名
     ext = file_obj.name.split('.')[-1]
     filename = f"{uuid.uuid4()}.{ext}"
     date_path = time.strftime("%Y%m")
-    # 存储路径: media/posts/YYYYMM/uuid.ext
+    
+    # 路径: media/posts/YYYYMM/uuid.ext
     upload_dir = os.path.join(settings.MEDIA_ROOT, 'posts', date_path)
     
     if not os.path.exists(upload_dir):
@@ -209,10 +259,9 @@ def upload_image(request):
         for chunk in file_obj.chunks():
             f.write(chunk)
             
-    # 返回 URL
     url = f"{settings.MEDIA_URL}posts/{date_path}/{filename}"
     
-    # Vditor 要求的数据格式
+    # 返回 Vditor 要求的 JSON 格式
     return JsonResponse({
         "msg": "上传成功",
         "code": 0,

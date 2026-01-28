@@ -27,7 +27,7 @@ class Post(models.Model):
         verbose_name='作者'
     )
     
-    # 👇 新增：标签关联
+    # 标签关联
     tags = models.ManyToManyField(
         Tag, 
         verbose_name='标签', 
@@ -35,6 +35,7 @@ class Post(models.Model):
         related_name='posts'
     )
     
+    # 点赞关联
     likes = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
         related_name='liked_posts', 
@@ -42,6 +43,9 @@ class Post(models.Model):
         verbose_name='点赞用户'
     )
     
+    # 成长值系统标记：是否已发放首赞奖励 (防止刷分)
+    is_first_like_rewarded = models.BooleanField('已发放首赞奖励', default=False)
+
     views = models.PositiveIntegerField('浏览量', default=0)
     created_at = models.DateTimeField('发布时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
@@ -72,8 +76,18 @@ class Comment(models.Model):
     )
     content = models.TextField('评论内容')
     created_at = models.DateTimeField('评论时间', auto_now_add=True)
+    
+    # 嵌套评论 (自关联)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
     
+    # 评论点赞关联 (新增)
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, 
+        related_name='liked_comments', 
+        blank=True,
+        verbose_name='点赞用户'
+    )
+
     class Meta:
         verbose_name = '评论'
         verbose_name_plural = verbose_name

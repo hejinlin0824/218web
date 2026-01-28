@@ -90,15 +90,13 @@ def register(request):
             # 1. 获取清洗后的数据
             username = form.cleaned_data['username']
             email = form.cleaned_data['email']
-            
-            # 👇👇👇 核心修改在这里 👇👇👇
-            # UserCreationForm 的字段名是 password1 (密码) 和 password2 (确认密码)
-            # 我们取 password1 作为用户的真实密码
             raw_password = form.cleaned_data['password1'] 
-            
             nickname = form.cleaned_data.get('nickname', '')
+            # 👇 获取新加的字段
+            status = form.cleaned_data.get('status')
+            student_id = form.cleaned_data.get('student_id')
 
-            # 2. 再次检查数据库中是否已存在 (防止并发注册)
+            # 2. 再次检查数据库中是否已存在
             if User.objects.filter(email=email).exists():
                 messages.error(request, '该邮箱已被注册。')
                 return render(request, 'user_app/register.html', {'form': form})
@@ -114,20 +112,21 @@ def register(request):
             user_data = {
                 'username': username,
                 'email': email,
-                # 👇 使用刚才获取的 raw_password 进行加密
-                'password': make_password(raw_password), 
+                'password': make_password(raw_password),
                 'nickname': nickname,
+                # 👇 将身份和学号打包进缓存
+                'status': status,
+                'student_id': student_id,
                 'is_active': True,
                 'email_verified': True
             }
 
-            # 5. 存入缓存 (Redis 或 内存)，有效期 24小时
+            # 5. 存入缓存
             cache.set(f'reg_token_{token}', user_data, 86400)
 
             # 6. 发送验证邮件
             send_activation_email(request, email, token, username)
             
-            # 7. 跳转提示页
             return redirect('user_app:activation_sent')
     else:
         form = RegisterForm()
@@ -153,12 +152,15 @@ def activate(request, token):
             messages.error(request, '注册链接已失效，用户名已被占用，请重新注册。')
             return redirect('user_app:register')
 
-        # 2. 写入数据库 (这才是真正的注册时刻！)
+        # 2. 写入数据库
         user = User.objects.create(
             username=user_data['username'],
             email=user_data['email'],
-            password=user_data['password'], # 已经是加密过的了
+            password=user_data['password'],
             nickname=user_data.get('nickname', ''),
+            # 👇 写入状态和学号
+            status=user_data.get('status', 'newbie'),
+            student_id=user_data.get('student_id'),
             is_active=True,
             email_verified=True
         )

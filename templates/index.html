@@ -4,6 +4,64 @@
 {% block title %}DSSG官方门户{% endblock %}
 
 {% block content %}
+<style>
+    /* === 🎮 游戏化 UI 组件 (头像框 + 像素条) === */
+    .avatar-wrapper {
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .avatar-wrapper img {
+        border: 3px solid #fff;
+        box-shadow: 0 0 0 2px #e0e0e0;
+        border-radius: 50%;
+        object-fit: cover;
+        box-sizing: content-box;
+    }
+    /* 等级角标 */
+    .avatar-badge {
+        position: absolute;
+        bottom: -2px;
+        right: -5px;
+        background: linear-gradient(45deg, #FFD700, #FFA500);
+        color: #fff;
+        font-size: 0.6rem;
+        font-weight: bold;
+        padding: 1px 6px;
+        border-radius: 10px;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 10;
+        white-space: nowrap;
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* 👇 新增：像素风进度条样式 (移植到主页) 👇 */
+    .pixel-progress-container {
+        width: 100%;
+        height: 12px; /* 主页条稍微细一点 */
+        background-color: #eee;
+        border: 2px solid #ccc;
+        position: relative;
+        border-radius: 0;
+    }
+    .pixel-progress-bar {
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.3s steps(10);
+        position: relative;
+    }
+    .pixel-progress-bar::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: rgba(255,255,255,0.4);
+    }
+</style>
+
 <div class="row">
     
     <div class="col-md-3 mb-4">
@@ -23,16 +81,31 @@
             <div class="card-body text-center bg-white rounded">
                 {% if user.is_authenticated %}
                     <div class="mb-2">
-                        {% if user.avatar %}
-                            <img src="{{ user.avatar.url }}" 
-                            class="rounded-circle shadow-sm" 
-                            style="width: 80px; height: 80px; object-fit: cover; aspect-ratio: 1 / 1;">
-                        {% else %}
-                            <div class="display-4 text-secondary">👤</div>
-                        {% endif %}
+                        <div class="avatar-wrapper">
+                            {% if user.avatar %}
+                                <img src="{{ user.avatar.url }}" style="width: 80px; height: 80px;">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
+                                     style="width: 80px; height: 80px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
+                                    {{ user.username.0|upper }}
+                                </div>
+                            {% endif %}
+                            <span class="avatar-badge">Lv.{{ user.level }}</span>
+                        </div>
                     </div>
-                    <h5 class="card-title text-truncate">{{ user.nickname|default:user.username }}</h5>
-                    <p class="card-text text-muted small text-truncate">{{ user.email }}</p>
+                    
+                    <h5 class="card-title text-truncate mb-1">{{ user.nickname|default:user.username }}</h5>
+                    <p class="card-text text-muted small text-truncate mb-3">{{ user.email }}</p>
+                    
+                    <div class="px-2 mb-3">
+                        <div class="d-flex justify-content-between small mb-1 text-muted" style="font-size: 0.7rem;">
+                            <span>EXP</span>
+                            <span class="font-monospace">{{ user.level_progress }}/100</span>
+                        </div>
+                        <div class="pixel-progress-container" title="当前等级进度: {{ user.level_progress }}%">
+                            <div class="pixel-progress-bar" style="width: {{ user.level_progress }}%;"></div>
+                        </div>
+                    </div>
                     <a href="{% url 'user_app:profile' %}" class="btn btn-sm btn-outline-secondary w-100">编辑档案</a>
                 {% else %}
                     <h5 class="card-title">访客</h5>
@@ -80,8 +153,38 @@
     <div class="col-md-9">
         
         <div class="p-4 mb-4 bg-white rounded-3 shadow-sm border-start border-5 border-primary">
-            <h1 class="display-6 fw-bold text-dark">DSSG Lab Center</h1>
-            <p class="col-md-8 fs-5 text-muted">这里是各位218er的家。</p>
+            <div class="row align-items-center">
+                <div class="col-md-9">
+                    <h1 class="display-6 fw-bold text-dark">DSSG Lab Center</h1>
+                    <p class="fs-5 text-muted mb-0">这里是各位 218er 的家。</p>
+                </div>
+                <div class="col-md-3 text-end d-none d-md-block">
+                    <div style="font-size: 3rem; opacity: 0.8;">🔬</div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="row text-center">
+                <div class="col-4 border-end">
+                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">已加入成员</div>
+                    <div class="h3 fw-bold text-primary mb-0 mt-2">
+                        {{ stats.users }} <span class="fs-6 text-muted fw-normal">人</span>
+                    </div>
+                </div>
+                <div class="col-4 border-end">
+                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">沉淀帖子</div>
+                    <div class="h3 fw-bold text-success mb-0 mt-2">
+                        {{ stats.posts }} <span class="fs-6 text-muted fw-normal">篇</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">近期活跃</div>
+                    <div class="h3 fw-bold text-warning mb-0 mt-2">
+                        {{ stats.online }} <span class="fs-6 text-muted fw-normal">人</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="card shadow-sm border-0 mb-4" style="min-height: 400px;">
