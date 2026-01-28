@@ -1,0 +1,33 @@
+{% extends 'user_app/login.html' %} 
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8"><title>激活失败</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">激活失败</div>
+                <div class="card-body text-center p-4">
+                    <div class="display-4 mb-3">🚫</div>
+                    <h4 class="text-danger">激活链接无效或已过期</h4>
+                    <p class="text-muted small">
+                        该链接可能已经被使用过，或者超过了有效期。
+                    </p>
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'user_app:register' %}" class="btn btn-primary">重新注册</a>
+                        <a href="{% url 'home' %}" class="btn btn-link text-secondary">返回首页</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+{% endblock %}

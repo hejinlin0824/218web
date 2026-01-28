@@ -13,9 +13,10 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-import os
 
-load_dotenv() # 👈 加载 .env 文件
+# 👈 加载 .env 文件中的环境变量
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,9 +28,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-=%xw9+le5$nbl*!+e27i9z2wfui+(#bos3!n^xx68a2%anw3=t'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# ⚠️ 注意：正式上线请改为 False
 DEBUG = True
 
-ALLOWED_HOSTS = ['49.234.26.95']
+ALLOWED_HOSTS = ['49.234.26.95', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -42,14 +44,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'user_app',
-    'core',  # 👈 新增：这是我们的门面
+    'core',  # 👈 门面应用
     'Github_trend',
-    'community', # 👈 新增：社区/论坛
-    'notifications', # 👈 新增
-    'news', # 👈 新增
-    # 👇 新增：全文检索框架
-    'haystack',
-    'direct_messages', # 👈 新增
+    'community', # 👈 社区/论坛
+    'notifications', # 👈 消息通知
+    'news', # 👈 公告
+    'haystack', # 👈 全文检索
+    'direct_messages', # 👈 私信
 ]
 
 MIDDLEWARE = [
@@ -67,7 +68,7 @@ ROOT_URLCONF = 'myweb.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # 👇 修改这里，告诉 Django 去根目录的 templates 找文件
+        # 👈 告诉 Django 去根目录的 templates 找文件
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -75,7 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'notifications.context_processors.unread_count', # 👈 新增
+                'notifications.context_processors.unread_count', # 👈 消息计数
             ],
         },
     },
@@ -132,29 +133,42 @@ USE_TZ = True
 STATIC_URL = 'static/'
 # STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] # 确保这一行存在
 
+# 自定义用户模型
 AUTH_USER_MODEL = 'user_app.CustomUser'
 
-# 2. 媒体文件配置 (用于存放头像)
-import os
+# 媒体文件配置 (用于存放头像)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# 登录成功后跳转的 URL (对应 urls.py 里的 name)
-# 注意：因为我们用了 app_name='user_app'，所以这里要加上前缀
+# 登录相关跳转
 LOGIN_REDIRECT_URL = 'home'
-# 登出后也跳回大厅
 LOGOUT_REDIRECT_URL = 'home'
+LOGIN_URL = 'user_app:login'
 
 # 指定认证后端
 AUTHENTICATION_BACKENDS = [
-    'user_app.authentication.EmailBackend',  # 我们刚写的，排在第一位
-    'django.contrib.auth.backends.ModelBackend', # 保留 Django 原生的作为兜底
+    'user_app.authentication.EmailBackend',  # 自定义邮箱登录
+    'django.contrib.auth.backends.ModelBackend', # 原生兜底
 ]
 
-# 邮件配置 (开发环境专用)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# 以后上线了再改成 smtp.gmail.com
+# ==================================
+# 📧 真实邮件发送配置 (SMTP)
+# ==================================
+# 使用 SMTP 后端，不再是 console
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')         # 例如 smtp.qq.com
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587)) # SSL 端口通常是 465
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER') # 你的邮箱地址
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') # 你的授权码
+# 👇👇👇 核心修改开始 👇👇👇
+# 改为使用 TLS (Transport Layer Security)
+# 很多云服务器对 SSL(465) 的握手处理有问题，改用 TLS(587) 通常能解决 "Connection unexpectedly closed"
+EMAIL_USE_TLS = True   # 👈 开启 TLS
+EMAIL_USE_SSL = False  # 👈 关闭 SSL (这两个不能同时为 True)
+# 👆👆👆 核心修改结束 👆👆👆
 
+EMAIL_FROM = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # 缓存配置 (开发环境使用内存缓存)
 CACHES = {
@@ -163,38 +177,24 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
-LOGIN_URL = 'user_app:login'
 
 
 # ==================================
 # Celery 配置
 # ==================================
-# Broker: 消息中间件，负责存储任务队列。这里使用 Redis。
-# 格式: redis://:密码@IP:端口/数据库号
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-
-# Backend: 结果存储后端，用于存储任务的执行结果（可选，如果不需要看结果可以不配）
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/1'
-
-# 时区设置（跟随 Django）
 CELERY_TIMEZONE = TIME_ZONE
-
-# 防止死锁建议配置 (可选)
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 单个任务最大运行时间 (30分钟)
+CELERY_TASK_TIME_LIMIT = 30 * 60
 
 # ==================================
 # Haystack + Whoosh 全文检索配置
 # ==================================
 HAYSTACK_CONNECTIONS = {
     'default': {
-        # 指定使用 Whoosh 引擎
         'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
-        # 索引文件存储路径 (会自动创建)
         'PATH': os.path.join(BASE_DIR, 'whoosh_index'),
     },
 }
-
-# 自动更新索引 (当有新帖子发布/修改时，自动更新搜索索引)
-# 注意：这会轻微影响保存速度，如果数据量巨大建议用 Celery 异步更新
 HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
