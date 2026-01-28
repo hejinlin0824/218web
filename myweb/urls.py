@@ -32,6 +32,7 @@ urlpatterns = [
     # 👇 新增：搜索路由
     path('search/', include('haystack.urls')),
     path('messages/', include('direct_messages.urls')), # 👈 新增
+    path('lab/', include('core.urls')),      # 👈 新增这行，前缀设为 lab/
 ]
 
 # 👇 这一段是让开发环境能访问上传的图片（头像）

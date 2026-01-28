@@ -2,204 +2,175 @@
 
 {% block title %}{{ target_user.nickname|default:target_user.username }} 的主页{% endblock %}
 
-{% block content %}
-<style>
-    /* === 🎮 游戏化 UI 组件 (复用全局样式) === */
-    .avatar-wrapper {
-        position: relative;
-        display: inline-block;
-        vertical-align: middle;
-    }
-    .avatar-wrapper img {
-        border: 3px solid #fff;
-        box-shadow: 0 0 0 2px #e0e0e0;
-        border-radius: 50%;
-        object-fit: cover;
-        box-sizing: content-box;
-    }
-    .avatar-badge {
-        position: absolute;
-        bottom: -2px;
-        right: -5px;
-        background: linear-gradient(45deg, #FFD700, #FFA500);
-        color: #fff;
-        font-size: 0.6rem;
-        font-weight: bold;
-        padding: 1px 6px;
-        border-radius: 10px;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        z-index: 10;
-        white-space: nowrap;
-        font-family: 'Courier New', Courier, monospace;
-    }
-    /* 像素风进度条 */
-    .pixel-progress-container {
-        width: 100%;
-        height: 12px;
-        background-color: #eee;
-        border: 2px solid #ccc;
-        position: relative;
-        border-radius: 0;
-    }
-    .pixel-progress-bar {
-        height: 100%;
-        background-color: #4CAF50;
-        transition: width 0.3s steps(10);
-        position: relative;
-    }
-    .pixel-progress-bar::after {
-        content: "";
-        position: absolute;
-        top: 2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background-color: rgba(255,255,255,0.4);
-    }
-</style>
+{% block sidebar %}{% endblock %}
 
-<div class="row">
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm border-0 text-center p-4">
-            
-            <div class="mb-3">
-                <div class="avatar-wrapper">
-                    {% if target_user.avatar %}
-                        <img src="{{ target_user.avatar.url }}" style="width: 120px; height: 120px;">
-                    {% else %}
-                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
-                             style="width: 120px; height: 120px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
-                            {{ target_user.username.0|upper }}
-                        </div>
-                    {% endif %}
-                    <span class="avatar-badge" style="font-size: 0.9rem; padding: 2px 8px;">Lv.{{ target_user.level }}</span>
-                </div>
-            </div>
-
-            <h3 class="fw-bold mb-1">{{ target_user.nickname|default:target_user.username }}</h3>
-            
-            <div class="mb-3">
-                {% if target_user.status == 'newbie' %}
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill">
-                        🌱 {{ target_user.get_status_display }}
-                    </span>
-                {% elif target_user.status == 'student' %}
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">
-                        🎓 {{ target_user.get_status_display }}
-                    </span>
-                {% elif target_user.status == 'alumni' %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill">
-                        🏆 {{ target_user.get_status_display }}
-                    </span>
-                {% endif %}
-                <small class="text-muted ms-2">加入于 {{ target_user.date_joined|date:"Y-m-d" }}</small>
-            </div>
-
-            <div class="row g-2 mb-3 px-2">
-                <div class="col-4">
-                    <div class="border rounded-3 p-2 bg-light">
-                        <div class="small text-muted mb-1" style="font-size: 0.7rem;">等级</div>
-                        <div class="fw-bold text-dark">Lv.{{ target_user.level }}</div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="border rounded-3 p-2 bg-light">
-                        <div class="small text-muted mb-1" style="font-size: 0.7rem;">成长值</div>
-                        <div class="fw-bold text-success">{{ target_user.growth }}</div>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="border rounded-3 p-2 bg-light">
-                        <div class="small text-muted mb-1" style="font-size: 0.7rem;">硬币</div>
-                        <div class="fw-bold text-warning">🪙 {{ target_user.coins }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="px-2 mb-4">
-                <div class="d-flex justify-content-between small mb-1">
-                    <span class="fw-bold text-muted" style="font-size: 0.7rem;">升级进度</span>
-                    <span class="font-monospace" style="font-size: 0.7rem;">{{ target_user.level_progress }}/100</span>
-                </div>
-                <div class="pixel-progress-container" title="当前等级进度: {{ target_user.level_progress }}%">
-                    <div class="pixel-progress-bar" style="width: {{ target_user.level_progress }}%;"></div>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-center mb-4 text-center bg-light py-2 rounded">
-                <a href="{% url 'user_app:following_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
-                    <div class="h5 fw-bold mb-0">{{ following_count }}</div>
-                    <small class="text-muted">关注</small>
-                </a>
-                
-                <a href="{% url 'user_app:followers_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
-                    <div class="h5 fw-bold mb-0">{{ followers_count }}</div>
-                    <small class="text-muted">粉丝</small>
-                </a>
-                
-                <div class="px-3">
-                    <div class="h5 fw-bold mb-0">{{ user_posts.count }}</div>
-                    <small class="text-muted">帖子</small>
-                </div>
-            </div>
-
-            {% if target_user.bio %}
-                <p class="text-secondary fst-italic px-2 mb-4">"{{ target_user.bio }}"</p>
-            {% endif %}
-
-            {% if user.is_authenticated and user != target_user %}
-                <div class="d-grid gap-2">
-                    <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
-                        {% csrf_token %}
-                        {% if is_following %}
-                            <button type="submit" class="btn btn-secondary w-100 rounded-pill">
-                                已关注 (点击取关)
-                            </button>
-                        {% else %}
-                            <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
-                                + 关注 TA
-                            </button>
-                        {% endif %}
-                    </form>
-                    
-                    <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary rounded-pill">
-                        ✉️ 发私信
-                    </a>
-                </div>
-            {% elif user == target_user %}
-                <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <h5 class="mb-3 ps-2 border-start border-4 border-primary">TA 发布的帖子</h5>
+{% block content_container %}
+<div class="col-12">
+    {% block content %}
+    <div class="container py-3">
         
-        {% for post in user_posts %}
-        <div class="card shadow-sm mb-3 border-0 hover-shadow">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <h5 class="card-title mb-1">
-                        <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link">
-                            {{ post.title }}
+        <div class="mb-4">
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-arrow-left"></i>返回大厅
+            </a>
+        </div>
+
+        <style>
+            .avatar-wrapper { position: relative; display: inline-block; vertical-align: middle; }
+            .avatar-wrapper img { border: 3px solid #fff; box-shadow: 0 0 0 2px #e0e0e0; border-radius: 50%; object-fit: cover; box-sizing: content-box; }
+            .avatar-badge { position: absolute; bottom: -2px; right: -5px; background: linear-gradient(45deg, #FFD700, #FFA500); color: #fff; font-size: 0.6rem; font-weight: bold; padding: 1px 6px; border-radius: 10px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
+            .pixel-progress-container { width: 100%; height: 12px; background-color: #eee; border: 2px solid #ccc; position: relative; border-radius: 0; }
+            .pixel-progress-bar { height: 100%; background-color: #4CAF50; transition: width 0.3s steps(10); position: relative; }
+            .pixel-progress-bar::after { content: ""; position: absolute; top: 2px; left: 0; right: 0; height: 2px; background-color: rgba(255,255,255,0.4); }
+        </style>
+
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm border-0 text-center p-4">
+                    
+                    <div class="mb-3">
+                        <div class="avatar-wrapper">
+                            {% if target_user.avatar %}
+                                <img src="{{ target_user.avatar.url }}" style="width: 120px; height: 120px;">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
+                                     style="width: 120px; height: 120px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
+                                    {{ target_user.username.0|upper }}
+                                </div>
+                            {% endif %}
+                            <span class="avatar-badge" style="font-size: 0.9rem; padding: 2px 8px;">Lv.{{ target_user.level }}</span>
+                        </div>
+                    </div>
+
+                    <h3 class="fw-bold mb-1">{{ target_user.nickname|default:target_user.username }}</h3>
+                    
+                    <div class="mb-3">
+                        {% if target_user.status == 'newbie' %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill">
+                                🌱 {{ target_user.get_status_display }}
+                            </span>
+                        {% elif target_user.status == 'student' %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">
+                                🎓 {{ target_user.get_status_display }}
+                            </span>
+                        {% elif target_user.status == 'alumni' %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill">
+                                🏆 {{ target_user.get_status_display }}
+                            </span>
+                        {% elif target_user.status == 'faculty' %}
+                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark rounded-pill">
+                                👨‍🏫 {{ target_user.get_status_display }}
+                            </span>
+                        {% endif %}
+                        <small class="text-muted ms-2">加入于 {{ target_user.date_joined|date:"Y-m-d" }}</small>
+                    </div>
+                    <div class="row g-2 mb-3 px-2">
+                        <div class="col-4">
+                            <div class="border rounded-3 p-2 bg-light">
+                                <div class="small text-muted mb-1" style="font-size: 0.7rem;">等级</div>
+                                <div class="fw-bold text-dark">Lv.{{ target_user.level }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded-3 p-2 bg-light">
+                                <div class="small text-muted mb-1" style="font-size: 0.7rem;">成长值</div>
+                                <div class="fw-bold text-success">{{ target_user.growth }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded-3 p-2 bg-light">
+                                <div class="small text-muted mb-1" style="font-size: 0.7rem;">硬币</div>
+                                <div class="fw-bold text-warning">🪙 {{ target_user.coins }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-2 mb-4">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="fw-bold text-muted" style="font-size: 0.7rem;">升级进度</span>
+                            <span class="font-monospace" style="font-size: 0.7rem;">{{ target_user.level_progress }}/100</span>
+                        </div>
+                        <div class="pixel-progress-container" title="当前等级进度: {{ target_user.level_progress }}%">
+                            <div class="pixel-progress-bar" style="width: {{ target_user.level_progress }}%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center mb-4 text-center bg-light py-2 rounded">
+                        <a href="{% url 'user_app:following_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
+                            <div class="h5 fw-bold mb-0">{{ following_count }}</div>
+                            <small class="text-muted">关注</small>
                         </a>
-                    </h5>
-                    <small class="text-muted">{{ post.created_at|date:"m-d" }}</small>
-                </div>
-                <p class="card-text text-secondary text-truncate small">{{ post.content }}</p>
-                <div class="mt-2 text-muted small">
-                    <span class="me-3">👁️ {{ post.views }}</span>
-                    <span class="me-3">❤️ {{ post.likes.count }}</span>
-                    <span>💬 {{ post.comments.count }}</span>
+                        
+                        <a href="{% url 'user_app:followers_list' target_user.pk %}" class="px-3 border-end text-decoration-none text-dark hover-bg-gray">
+                            <div class="h5 fw-bold mb-0">{{ followers_count }}</div>
+                            <small class="text-muted">粉丝</small>
+                        </a>
+                        
+                        <div class="px-3">
+                            <div class="h5 fw-bold mb-0">{{ user_posts.count }}</div>
+                            <small class="text-muted">帖子</small>
+                        </div>
+                    </div>
+
+                    {% if target_user.bio %}
+                        <p class="text-secondary fst-italic px-2 mb-4">"{{ target_user.bio }}"</p>
+                    {% endif %}
+
+                    {% if user.is_authenticated and user != target_user %}
+                        <div class="d-grid gap-2">
+                            <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
+                                {% csrf_token %}
+                                {% if is_following %}
+                                    <button type="submit" class="btn btn-secondary w-100 rounded-pill">
+                                        已关注 (点击取关)
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
+                                        + 关注 TA
+                                    </button>
+                                {% endif %}
+                            </form>
+                            
+                            <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary rounded-pill">
+                                ✉️ 发私信
+                            </a>
+                        </div>
+                    {% elif user == target_user %}
+                        <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
+                    {% endif %}
                 </div>
             </div>
+
+            <div class="col-md-8">
+                <h5 class="mb-3 ps-2 border-start border-4 border-primary">TA 发布的帖子</h5>
+                
+                {% for post in user_posts %}
+                <div class="card shadow-sm mb-3 border-0 hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="card-title mb-1">
+                                <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link">
+                                    {{ post.title }}
+                                </a>
+                            </h5>
+                            <small class="text-muted">{{ post.created_at|date:"m-d" }}</small>
+                        </div>
+                        <p class="card-text text-secondary text-truncate small">{{ post.content }}</p>
+                        <div class="mt-2 text-muted small">
+                            <span class="me-3">👁️ {{ post.views }}</span>
+                            <span class="me-3">❤️ {{ post.likes.count }}</span>
+                            <span>💬 {{ post.comments.count }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
+                    <p class="mb-0">这个人很懒，什么都没写。</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
-        {% empty %}
-        <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
-            <p class="mb-0">这个人很懒，什么都没写。</p>
-        </div>
-        {% endfor %}
     </div>
+    {% endblock %}
 </div>
 {% endblock %}

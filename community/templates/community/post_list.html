@@ -65,7 +65,8 @@
                 <div class="d-flex align-items-center text-muted small mt-3">
                     <div class="d-flex align-items-center me-3">
                         {% if post.author.avatar %}
-                            <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" width="20" height="20">
+                            <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" 
+                            style="width: 20px; height: 20px; object-fit: cover; aspect-ratio: 1/1;">
                         {% else %}
                             <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-1" style="width: 20px; height: 20px; font-size: 10px;">
                                 {{ post.author.username.0|upper }}

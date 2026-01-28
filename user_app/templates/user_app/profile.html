@@ -2,177 +2,185 @@
 
 {% block title %}个人中心 - {{ user.nickname|default:user.username }}{% endblock %}
 
-{% block content %}
-<style>
-    .avatar-wrapper { position: relative; display: inline-block; vertical-align: middle; }
-    .avatar-wrapper img { border: 3px solid #fff; box-shadow: 0 0 0 2px #e0e0e0; border-radius: 50%; object-fit: cover; box-sizing: content-box; }
-    .avatar-badge { position: absolute; bottom: -2px; right: -5px; background: linear-gradient(45deg, #FFD700, #FFA500); color: #fff; font-size: 0.6rem; font-weight: bold; padding: 1px 6px; border-radius: 10px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
-    
-    /* 像素进度条样式 */
-    .pixel-progress-container { width: 100%; height: 16px; background-color: #eee; border: 2px solid #ccc; position: relative; border-radius: 0; }
-    .pixel-progress-bar { height: 100%; background-color: #4CAF50; transition: width 0.3s steps(10); position: relative; }
-    .pixel-progress-bar::after { content: ""; position: absolute; top: 2px; left: 0; right: 0; height: 4px; background-color: rgba(255,255,255,0.4); }
-</style>
+{% block sidebar %}{% endblock %}
 
-<div class="row justify-content-center">
-    
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-body text-center p-4">
-                
-                <div class="mb-3">
-                    <div class="avatar-wrapper">
-                        {% if user.avatar %}
-                            <img src="{{ user.avatar.url }}" style="width: 120px; height: 120px;">
-                        {% else %}
-                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
-                                 style="width: 120px; height: 120px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
-                                {{ user.username.0|upper }}
+{% block content_container %}
+<div class="col-12">
+    {% block content %}
+    <div class="container py-3">
+        
+        <div class="mb-4">
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-arrow-left"></i> 返回大厅
+            </a>
+        </div>
+
+        <div class="row justify-content-center">
+            
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center p-4">
+                        
+                        <div class="mb-3">
+                            <div class="avatar-wrapper">
+                                {% if user.avatar %}
+                                    <img src="{{ user.avatar.url }}" style="width: 120px; height: 120px;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
+                                         style="width: 120px; height: 120px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
+                                        {{ user.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                                <span class="avatar-badge" style="font-size: 0.9rem; padding: 2px 8px;">Lv.{{ user.level }}</span>
                             </div>
-                        {% endif %}
-                        <span class="avatar-badge" style="font-size: 0.9rem; padding: 2px 8px;">Lv.{{ user.level }}</span>
-                    </div>
-                </div>
-
-                <h4 class="fw-bold mb-1">{{ user.nickname|default:user.username }}</h4>
-                <p class="text-muted small mb-2">{{ user.email }}</p>
-
-                <div class="mb-3">
-                    {% if user.status == 'newbie' %}
-                        <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill">
-                            🌱 {{ user.get_status_display }}
-                        </span>
-                    {% elif user.status == 'student' %}
-                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill">
-                            🎓 {{ user.get_status_display }}
-                        </span>
-                    {% elif user.status == 'alumni' %}
-                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2 rounded-pill">
-                            🏆 {{ user.get_status_display }}
-                        </span>
-                    {% endif %}
-                </div>
-
-                <div class="row g-2 mb-3 px-2">
-                    <div class="col-4">
-                        <div class="border rounded-3 p-2 bg-light">
-                            <div class="small text-muted mb-1" style="font-size: 0.7rem;">等级</div>
-                            <div class="fw-bold text-dark">Lv.{{ user.level }}</div>
                         </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="border rounded-3 p-2 bg-light">
-                            <div class="small text-muted mb-1" style="font-size: 0.7rem;">成长值</div>
-                            <div class="fw-bold text-success">{{ user.growth }}</div>
+
+                        <h4 class="fw-bold mb-1">{{ user.nickname|default:user.username }}</h4>
+                        <p class="text-muted small mb-2">{{ user.email }}</p>
+
+                        <div class="mb-3">
+                            {% if user.status == 'newbie' %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill">
+                                    🌱 {{ user.get_status_display }}
+                                </span>
+                            {% elif user.status == 'student' %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill">
+                                    🎓 {{ user.get_status_display }}
+                                </span>
+                            {% elif user.status == 'alumni' %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2 rounded-pill">
+                                    🏆 {{ user.get_status_display }}
+                                </span>
+                            {% elif user.status == 'faculty' %}
+                                <span class="badge bg-dark bg-opacity-10 text-dark border border-dark px-3 py-2 rounded-pill">
+                                    👨‍🏫 {{ user.get_status_display }}
+                                </span>
+                            {% endif %}
                         </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="border rounded-3 p-2 bg-light">
-                            <div class="small text-muted mb-1" style="font-size: 0.7rem;">硬币</div>
-                            <div class="fw-bold text-warning">🪙 {{ user.coins }}</div>
+
+                        <div class="row g-2 mb-3 px-2">
+                            <div class="col-4">
+                                <div class="border rounded-3 p-2 bg-light">
+                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">等级</div>
+                                    <div class="fw-bold text-dark">Lv.{{ user.level }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="border rounded-3 p-2 bg-light">
+                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">成长值</div>
+                                    <div class="fw-bold text-success">{{ user.growth }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="border rounded-3 p-2 bg-light">
+                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">硬币</div>
+                                    <div class="fw-bold text-warning">🪙 {{ user.coins }}</div>
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="px-3 mb-4">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-bold text-muted" style="font-size: 0.7rem;">升级进度</span>
+                                <span class="font-monospace" style="font-size: 0.7rem;">{{ user.level_progress }}/100</span>
+                            </div>
+                            <div class="pixel-progress-container">
+                                <div class="pixel-progress-bar" style="width: {{ user.level_progress }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-center mb-4 bg-light py-3 rounded-3">
+                            <a href="{% url 'user_app:following_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
+                                <div class="h5 fw-bold mb-0 text-primary">{{ user.following.count }}</div>
+                                <small class="text-muted">关注</small>
+                            </a>
+                            <a href="{% url 'user_app:followers_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
+                                <div class="h5 fw-bold mb-0 text-primary">{{ user.followers.count }}</div>
+                                <small class="text-muted">粉丝</small>
+                            </a>
+                            <div class="px-3">
+                                <div class="h5 fw-bold mb-0 text-primary">{{ user.posts.count }}</div>
+                                <small class="text-muted">帖子</small>
+                            </div>
+                        </div>
+
+                        <a href="{% url 'user_app:public_profile' user.pk %}" class="btn btn-outline-primary w-100 rounded-pill">
+                            👀 预览我的公开主页
+                        </a>
                     </div>
                 </div>
+            </div>
 
-                <div class="px-3 mb-4">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span class="fw-bold text-muted" style="font-size: 0.7rem;">升级进度</span>
-                        <span class="font-monospace" style="font-size: 0.7rem;">{{ user.level_progress }}/100</span>
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-bottom-0">
+                        <h5 class="mb-0 fw-bold">⚙️ 编辑资料</h5>
                     </div>
-                    <div class="pixel-progress-container" title="还差 {{ 100|add:user.level_progress|stringformat:'d' }} 点升级">
-                        <div class="pixel-progress-bar" style="width: {{ user.level_progress }}%;"></div>
+                    <div class="card-body p-4">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {{ form.non_field_errors }}
+                                </div>
+                            {% endif %}
+
+                            {% for field in form %}
+                                <div class="mb-4" id="div_{{ field.name }}" 
+                                     style="{% if field.name == 'student_id' %}display:none;{% endif %}">
+                                    <label class="form-label fw-bold text-secondary small">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="form-text text-muted">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                                <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                                    💾 保存更改
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-
-                <div class="d-flex justify-content-center mb-4 bg-light py-3 rounded-3">
-                    <a href="{% url 'user_app:following_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
-                        <div class="h5 fw-bold mb-0 text-primary">{{ user.following.count }}</div>
-                        <small class="text-muted">关注</small>
-                    </a>
-                    <a href="{% url 'user_app:followers_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
-                        <div class="h5 fw-bold mb-0 text-primary">{{ user.followers.count }}</div>
-                        <small class="text-muted">粉丝</small>
-                    </a>
-                    <div class="px-3">
-                        <div class="h5 fw-bold mb-0 text-primary">{{ user.posts.count }}</div>
-                        <small class="text-muted">帖子</small>
-                    </div>
-                </div>
-
-                <a href="{% url 'user_app:public_profile' user.pk %}" class="btn btn-outline-primary w-100 rounded-pill">
-                    👀 预览我的公开主页
-                </a>
             </div>
         </div>
     </div>
 
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-bottom-0">
-                <h5 class="mb-0 fw-bold">⚙️ 编辑资料</h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusSelect = document.getElementById('id_profile_status'); 
+            const studentIdDiv = document.getElementById('div_student_id');
+            const studentIdInput = document.getElementById('id_profile_student_id');
+            const currentStatus = "{{ user.status }}"; 
 
-                    {% for field in form %}
-                        <div class="mb-4" id="div_{{ field.name }}" 
-                             style="{% if field.name == 'student_id' %}display:none;{% endif %}">
-                            <label class="form-label fw-bold text-secondary small">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}
-                                <div class="form-text text-muted">{{ field.help_text }}</div>
-                            {% endif %}
-                            {% if field.errors %}
-                                <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
-                        <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
-                            💾 保存更改
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const statusSelect = document.getElementById('id_profile_status'); 
-        const studentIdDiv = document.getElementById('div_student_id');
-        const studentIdInput = document.getElementById('id_profile_student_id');
-        const currentStatus = "{{ user.status }}"; 
-
-        if (currentStatus === 'alumni') {
-            if(statusSelect) statusSelect.disabled = true;
-            if(studentIdInput) studentIdInput.disabled = true;
-        }
-
-        function toggleStudentId() {
-            if (!statusSelect) return;
-            const val = statusSelect.value;
-            if (val === 'student' || val === 'alumni') {
-                studentIdDiv.style.display = 'block';
-                setTimeout(() => { studentIdDiv.style.opacity = '1'; }, 10);
-            } else {
-                studentIdDiv.style.display = 'none';
+            if (currentStatus === 'alumni') {
+                if(statusSelect) statusSelect.disabled = true;
+                if(studentIdInput) studentIdInput.disabled = true;
             }
-        }
 
-        if (statusSelect) {
-            statusSelect.addEventListener('change', toggleStudentId);
-            toggleStudentId(); 
-        }
-    });
-</script>
+            function toggleStudentId() {
+                if (!statusSelect) return;
+                const val = statusSelect.value;
+                if (val === 'student' || val === 'alumni') {
+                    studentIdDiv.style.display = 'block';
+                    setTimeout(() => { studentIdDiv.style.opacity = '1'; }, 10);
+                } else {
+                    studentIdDiv.style.display = 'none';
+                }
+            }
+
+            if (statusSelect) {
+                statusSelect.addEventListener('change', toggleStudentId);
+                toggleStudentId(); 
+            }
+        });
+    </script>
+    {% endblock %}
+</div>
 {% endblock %}

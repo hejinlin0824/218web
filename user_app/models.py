@@ -28,6 +28,7 @@ class CustomUser(AbstractUser):
         ('newbie', '🌱 新生'),
         ('student', '🎓 在读'),
         ('alumni', '🏆 毕业'),
+        ('faculty', '👨‍🏫 导师'), # 👈 新增这一行
     )
 
     # 基础信息
@@ -36,6 +37,10 @@ class CustomUser(AbstractUser):
     bio = models.TextField(max_length=500, blank=True, verbose_name='个人简介')
     avatar = models.ImageField(upload_to=user_avatar_path, blank=True, null=True, verbose_name='头像')
     email_verified = models.BooleanField(default=False, verbose_name='邮箱已验证')
+    # # 2. 新增：详细介绍 (Markdown)
+    # detailed_intro = models.TextField('详细介绍 (Markdown)', blank=True, help_text="仅导师身份生效，支持 Markdown 语法")
+    # 👇 修改这个字段的 help_text
+    detailed_intro = models.TextField('详细介绍 (Markdown)', blank=True, help_text="支持 Markdown 语法。用于在实验室介绍页展示个人简历、研究兴趣等。")
     
     # 身份认证信息
     status = models.CharField('当前身份', max_length=10, choices=STATUS_CHOICES, default='newbie')

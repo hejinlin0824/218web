@@ -4,301 +4,151 @@
 {% block title %}DSSG官方门户{% endblock %}
 
 {% block content %}
-<style>
-    /* === 🎮 游戏化 UI 组件 (头像框 + 像素条) === */
-    .avatar-wrapper {
-        position: relative;
-        display: inline-block;
-        vertical-align: middle;
-    }
-    .avatar-wrapper img {
-        border: 3px solid #fff;
-        box-shadow: 0 0 0 2px #e0e0e0;
-        border-radius: 50%;
-        object-fit: cover;
-        box-sizing: content-box;
-    }
-    /* 等级角标 */
-    .avatar-badge {
-        position: absolute;
-        bottom: -2px;
-        right: -5px;
-        background: linear-gradient(45deg, #FFD700, #FFA500);
-        color: #fff;
-        font-size: 0.6rem;
-        font-weight: bold;
-        padding: 1px 6px;
-        border-radius: 10px;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        z-index: 10;
-        white-space: nowrap;
-        font-family: 'Courier New', Courier, monospace;
-    }
-
-    /* 👇 新增：像素风进度条样式 (移植到主页) 👇 */
-    .pixel-progress-container {
-        width: 100%;
-        height: 12px; /* 主页条稍微细一点 */
-        background-color: #eee;
-        border: 2px solid #ccc;
-        position: relative;
-        border-radius: 0;
-    }
-    .pixel-progress-bar {
-        height: 100%;
-        background-color: #4CAF50;
-        transition: width 0.3s steps(10);
-        position: relative;
-    }
-    .pixel-progress-bar::after {
-        content: "";
-        position: absolute;
-        top: 2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background-color: rgba(255,255,255,0.4);
-    }
-</style>
-
-<div class="row">
-    
-    <div class="col-md-3 mb-4">
-        
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body p-3">
-                <form action="{% url 'haystack_search' %}" method="get">
-                    <div class="input-group">
-                        <input type="text" name="q" class="form-control" placeholder="全站搜索..." required>
-                        <button class="btn btn-primary" type="submit">🔍</button>
-                    </div>
-                </form>
-            </div>
+<div class="p-4 mb-4 bg-white rounded-3 shadow-sm border-start border-5 border-primary">
+    <div class="row align-items-center">
+        <div class="col-md-9">
+            <h1 class="display-6 fw-bold text-dark">新疆大学计算机学院DSSG实验室</h1>
+            <p class="fs-5 text-muted mb-0">官方信息、学术交流、毕业团聚
+            </p>
         </div>
-
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body text-center bg-white rounded">
-                {% if user.is_authenticated %}
-                    <div class="mb-2">
-                        <div class="avatar-wrapper">
-                            {% if user.avatar %}
-                                <img src="{{ user.avatar.url }}" style="width: 80px; height: 80px;">
-                            {% else %}
-                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
-                                     style="width: 80px; height: 80px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
-                                    {{ user.username.0|upper }}
-                                </div>
-                            {% endif %}
-                            <span class="avatar-badge">Lv.{{ user.level }}</span>
-                        </div>
-                    </div>
-                    
-                    <h5 class="card-title text-truncate mb-1">{{ user.nickname|default:user.username }}</h5>
-                    <p class="card-text text-muted small text-truncate mb-3">{{ user.email }}</p>
-                    
-                    <div class="px-2 mb-3">
-                        <div class="d-flex justify-content-between small mb-1 text-muted" style="font-size: 0.7rem;">
-                            <span>EXP</span>
-                            <span class="font-monospace">{{ user.level_progress }}/100</span>
-                        </div>
-                        <div class="pixel-progress-container" title="当前等级进度: {{ user.level_progress }}%">
-                            <div class="pixel-progress-bar" style="width: {{ user.level_progress }}%;"></div>
-                        </div>
-                    </div>
-                    <a href="{% url 'user_app:profile' %}" class="btn btn-sm btn-outline-secondary w-100">编辑档案</a>
-                {% else %}
-                    <h5 class="card-title">访客</h5>
-                    <p class="small text-muted">请登录以使用实验室功能</p>
-                    <a href="{% url 'user_app:login' %}" class="btn btn-sm btn-primary w-100">立即登录</a>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="d-md-none mb-3">
-            <button class="btn btn-outline-primary w-100 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-expanded="false">
-                ☰ 展开应用导航
-            </button>
-        </div>
-
-        <div class="list-group shadow-sm border-0 collapse d-md-block" id="sidebarMenu">
-            <div class="list-group-item bg-primary text-white fw-bold">
-                🚀 应用导航
-            </div>
-            
-            <a href="{% url 'Github_trend:index' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <span>GitHub 趋势</span>
-                <span class="badge bg-danger bg-opacity-75 rounded-pill">Hot</span>
-            </a>
-            
-            <a href="{% url 'community:post_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <span>社区讨论</span>
-                <span class="badge bg-success bg-opacity-75 rounded-pill">New</span>
-            </a>
-
-            <a href="{% url 'user_app:profile' %}" class="list-group-item list-group-item-action">
-                用户中心
-            </a>
-            
-            <a href="{% url 'direct_messages:inbox' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                <span>💌 我的私信</span>
-            </a>
-            
-            <a href="#" class="list-group-item list-group-item-action disabled text-muted">
-                数据可视化面板 <small>(计划)</small>
-            </a>
+        <div class="col-md-3 text-end d-none d-md-block">
+            <div style="font-size: 3rem; opacity: 0.8;">🔬</div>
         </div>
     </div>
 
-    <div class="col-md-9">
-        
-        <div class="p-4 mb-4 bg-white rounded-3 shadow-sm border-start border-5 border-primary">
-            <div class="row align-items-center">
-                <div class="col-md-9">
-                    <h1 class="display-6 fw-bold text-dark">DSSG Lab Center</h1>
-                    <p class="fs-5 text-muted mb-0">这里是各位 218er 的家。</p>
-                </div>
-                <div class="col-md-3 text-end d-none d-md-block">
-                    <div style="font-size: 3rem; opacity: 0.8;">🔬</div>
-                </div>
-            </div>
+    <hr class="my-4">
 
-            <hr class="my-4">
-
-            <div class="row text-center">
-                <div class="col-4 border-end">
-                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">已加入成员</div>
-                    <div class="h3 fw-bold text-primary mb-0 mt-2">
-                        {{ stats.users }} <span class="fs-6 text-muted fw-normal">人</span>
-                    </div>
-                </div>
-                <div class="col-4 border-end">
-                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">沉淀帖子</div>
-                    <div class="h3 fw-bold text-success mb-0 mt-2">
-                        {{ stats.posts }} <span class="fs-6 text-muted fw-normal">篇</span>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">近期活跃</div>
-                    <div class="h3 fw-bold text-warning mb-0 mt-2">
-                        {{ stats.online }} <span class="fs-6 text-muted fw-normal">人</span>
-                    </div>
-                </div>
+    <div class="row text-center">
+        <div class="col-4 border-end">
+            <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">已加入成员</div>
+            <div class="h3 fw-bold text-primary mb-0 mt-2">
+                {{ stats.users }} <span class="fs-6 text-muted fw-normal">人</span>
             </div>
         </div>
-
-        <div class="card shadow-sm border-0 mb-4" style="min-height: 400px;">
-            <div class="card-header bg-white border-bottom-0 pt-3 pb-0 px-3">
-                <ul class="nav nav-tabs card-header-tabs" id="homeTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-bold text-dark" id="news-tab" data-bs-toggle="tab" data-bs-target="#news-panel" type="button" role="tab">
-                            📢 实验室动态
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-bold text-secondary" id="community-tab" data-bs-toggle="tab" data-bs-target="#community-panel" type="button" role="tab">
-                            💬 社区讨论
-                        </button>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="card-body p-0">
-                <div class="tab-content" id="homeTabsContent">
-                    
-                    <div class="tab-pane fade show active" id="news-panel" role="tabpanel">
-                        <div class="list-group list-group-flush">
-                            {% for news in announcements %}
-                            <div class="list-group-item border-start-0 border-end-0 py-3 px-4">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <h6 class="mb-0 text-truncate" style="max-width: 80%;">
-                                        {% if news.is_top %}
-                                            <span class="badge bg-danger me-1">置顶</span>
-                                        {% endif %}
-                                        <span class="fw-bold text-dark">{{ news.title }}</span>
-                                    </h6>
-                                    <small class="text-muted font-monospace">{{ news.created_at|date:"Y-m-d" }}</small>
-                                </div>
-                                <p class="text-secondary small mb-0 text-truncate opacity-75">
-                                    {{ news.content|striptags }}
-                                </p>
-                            </div>
-                            {% empty %}
-                            <div class="text-center py-5 text-muted">
-                                <div class="fs-1 mb-2">📯</div>
-                                <p class="mb-0">暂无公告发布</p>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="community-panel" role="tabpanel">
-                        <div class="list-group list-group-flush">
-                            {% for post in recent_posts %}
-                            <div class="list-group-item border-start-0 border-end-0 py-3 px-4 position-relative hover-shadow-light">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <h6 class="mb-0 text-truncate" style="max-width: 75%;">
-                                        <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link fw-bold">
-                                            {{ post.title }}
-                                        </a>
-                                    </h6>
-                                    <small class="text-muted">{{ post.created_at|timesince }}前</small>
-                                </div>
-                                <div class="d-flex align-items-center small text-muted mt-1">
-                                    <div class="d-flex align-items-center me-3">
-                                        {% if post.author.avatar %}
-                                            <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" width="16" height="16" style="object-fit: cover;">
-                                        {% else %}
-                                            <span class="me-1">👤</span>
-                                        {% endif %}
-                                        <span>{{ post.author.nickname|default:post.author.username }}</span>
-                                    </div>
-                                    <span class="me-3">👁️ {{ post.views }}</span>
-                                    <span>💬 {{ post.comment_count }}</span>
-                                </div>
-                                <p class="text-secondary small mt-2 mb-0 text-truncate">
-                                    {{ post.content|md_to_text|truncatechars:60 }}
-                                </p>
-                            </div>
-                            {% empty %}
-                            <div class="text-center py-5 text-muted">
-                                <div class="fs-1 mb-2">🛋️</div>
-                                <p class="mb-2">社区暂时静悄悄的...</p>
-                                <a href="{% url 'community:post_create' %}" class="btn btn-sm btn-primary">去发第一篇帖子</a>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <div class="card-footer bg-light border-top text-center py-2">
-                            <a href="{% url 'community:post_list' %}" class="text-decoration-none fw-bold small text-primary">
-                                进入社区讨论区 &raquo;
-                            </a>
-                        </div>
-                    </div>
-
-                </div>
+        <div class="col-4 border-end">
+            <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">沉淀帖子</div>
+            <div class="h3 fw-bold text-success mb-0 mt-2">
+                {{ stats.posts }} <span class="fs-6 text-muted fw-normal">篇</span>
             </div>
         </div>
-        
-        <div class="row g-3">
-            <div class="col-md-6">
-                <div class="card bg-light border-0 h-100">
-                    <div class="card-body">
-                        <h6>📅 日程提醒</h6>
-                        <p class="small text-muted">暂无待办事项。</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card bg-light border-0 h-100">
-                    <div class="card-body">
-                        <h6>🔗 常用链接</h6>
-                        <a href="#" class="badge bg-secondary text-decoration-none">GitLab</a>
-                        <a href="#" class="badge bg-secondary text-decoration-none">Overleaf</a>
-                    </div>
-                </div>
+        <div class="col-4">
+            <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">近期活跃</div>
+            <div class="h3 fw-bold text-warning mb-0 mt-2">
+                {{ stats.online }} <span class="fs-6 text-muted fw-normal">人</span>
             </div>
         </div>
+    </div>
+</div>
 
+<div class="card shadow-sm border-0 mb-4" style="min-height: 400px;">
+    <div class="card-header bg-white border-bottom-0 pt-3 pb-0 px-3">
+        <ul class="nav nav-tabs card-header-tabs" id="homeTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold text-dark" id="news-tab" data-bs-toggle="tab" data-bs-target="#news-panel" type="button" role="tab">
+                    📢 实验室动态
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold text-secondary" id="community-tab" data-bs-toggle="tab" data-bs-target="#community-panel" type="button" role="tab">
+                    💬 社区讨论
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="tab-content" id="homeTabsContent">
+            
+            <div class="tab-pane fade show active" id="news-panel" role="tabpanel">
+                <div class="list-group list-group-flush">
+                    {% for news in announcements %}
+                    <div class="list-group-item border-start-0 border-end-0 py-3 px-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 text-truncate" style="max-width: 80%;">
+                                {% if news.is_top %}
+                                    <span class="badge bg-danger me-1">置顶</span>
+                                {% endif %}
+                                <span class="fw-bold text-dark">{{ news.title }}</span>
+                            </h6>
+                            <small class="text-muted font-monospace">{{ news.created_at|date:"Y-m-d" }}</small>
+                        </div>
+                        <p class="text-secondary small mb-0 text-truncate opacity-75">
+                            {{ news.content|striptags }}
+                        </p>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2">📯</div>
+                        <p class="mb-0">暂无公告发布</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="community-panel" role="tabpanel">
+                <div class="list-group list-group-flush">
+                    {% for post in recent_posts %}
+                    <div class="list-group-item border-start-0 border-end-0 py-3 px-4 position-relative hover-shadow-light">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="mb-0 text-truncate" style="max-width: 75%;">
+                                <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link fw-bold">
+                                    {{ post.title }}
+                                </a>
+                            </h6>
+                            <small class="text-muted">{{ post.created_at|timesince }}前</small>
+                        </div>
+                        <div class="d-flex align-items-center small text-muted mt-1">
+                            <div class="d-flex align-items-center me-3">
+                                {% if post.author.avatar %}
+                                    <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" width="16" height="16" style="object-fit: cover;aspect-ratio: 1/1;">
+                                {% else %}
+                                    <span class="me-1">👤</span>
+                                {% endif %}
+                                <span>{{ post.author.nickname|default:post.author.username }}</span>
+                            </div>
+                            <span class="me-3">👁️ {{ post.views }}</span>
+                            <span>💬 {{ post.comment_count }}</span>
+                        </div>
+                        <p class="text-secondary small mt-2 mb-0 text-truncate">
+                            {{ post.content|md_to_text|truncatechars:60 }}
+                        </p>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2">🛋️</div>
+                        <p class="mb-2">社区暂时静悄悄的...</p>
+                        <a href="{% url 'community:post_create' %}" class="btn btn-sm btn-primary">去发第一篇帖子</a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer bg-light border-top text-center py-2">
+                    <a href="{% url 'community:post_list' %}" class="text-decoration-none fw-bold small text-primary">
+                        进入社区讨论区 &raquo;
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card bg-light border-0 h-100">
+            <div class="card-body">
+                <h6>📅 日程提醒</h6>
+                <p class="small text-muted">暂无待办事项。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card bg-light border-0 h-100">
+            <div class="card-body">
+                <h6>🔗 常用链接</h6>
+                <a href="#" class="badge bg-secondary text-decoration-none">GitLab</a>
+                <a href="#" class="badge bg-secondary text-decoration-none">Overleaf</a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

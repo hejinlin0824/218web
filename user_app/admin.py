@@ -2,29 +2,38 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser, StudentWhitelist
 
-# 注册学号白名单
+# 1. 注册学号白名单 (用于学生认证)
 @admin.register(StudentWhitelist)
 class StudentWhitelistAdmin(admin.ModelAdmin):
     list_display = ('student_id', 'name')
     search_fields = ('student_id', 'name')
 
+# 2. 自定义用户管理
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        # 将成长值相关字段添加到“新增用户”页面（如果需要的话）
-        ('自定义信息', {'fields': ('nickname', 'email', 'bio', 'status', 'student_id')}),
-    )
     
-    # 列表页显示的字段
-    list_display = ['username', 'email', 'nickname', 'level', 'growth', 'coins', 'status', 'student_id']
+    # --- 列表页配置 ---
+    # 在用户列表直接看到：身份、等级、成长值、学号
+    list_display = ['username', 'email', 'nickname', 'status', 'level', 'growth', 'student_id', 'is_staff']
+    list_filter = ('status', 'level', 'is_staff', 'is_active')
+    search_fields = ('username', 'nickname', 'email', 'student_id')
     
-    # 编辑页的字段分类
+    # --- 编辑页配置 (Fieldsets) ---
+    # 这里定义了点击某个用户进去后，字段怎么分组显示
     fieldsets = UserAdmin.fieldsets + (
-        ('自定义信息', {'fields': ('nickname', 'bio', 'avatar', 'email_verified', 'status', 'student_id')}),
-        ('成长体系 (Gamification)', {'fields': ('level', 'growth', 'coins')}),
+        ('自定义信息', {
+            'fields': ('nickname', 'bio', 'avatar', 'email_verified', 'status', 'student_id')
+        }),
+        ('导师专属', {
+            'fields': ('detailed_intro',), 
+            'description': '仅当身份为"导师"时，此处的 Markdown 内容才会在前台展示。'
+        }),
+        ('成长体系 (Gamification)', {
+            'fields': ('level', 'growth', 'coins')
+        }),
     )
     
-    # 设置 level 为只读，强制管理员通过修改 growth 来调整等级 (可选，或者允许修改但会被 save_model 覆盖)
+    # 设置 level 为只读，强制管理员通过修改 growth 来调整等级，保证数据一致性
     readonly_fields = ('level',) 
 
     def save_model(self, request, obj, form, change):
@@ -40,4 +49,5 @@ class CustomUserAdmin(UserAdmin):
         # 调用父类保存方法写入数据库
         super().save_model(request, obj, form, change)
 
+# 注册 CustomUser
 admin.site.register(CustomUser, CustomUserAdmin)
