@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
-from django.db import models
+from django.db import models, transaction
+from django.core.exceptions import ValidationError
 import uuid
 import os
 from django.conf import settings
@@ -114,6 +115,51 @@ class CustomUser(AbstractUser):
             models.Q(from_user=other_user, to_user=self),
             status='accepted'
         ).exists()
+    
+    # 👇👇👇 新增：金币交易逻辑 👇👇👇
+    @transaction.atomic
+    def deduct_coins(self, amount):
+        """
+        扣除金币 (用于发布悬赏)
+        :param amount: 数量
+        :return: 成功返回 True
+        :raise: 余额不足抛出 ValidationError
+        """
+        if amount < 0:
+            raise ValueError("扣除金额不能为负数")
+        
+        # 重新从数据库获取最新数据并锁定行，防止并发问题
+        user = CustomUser.objects.select_for_update().get(pk=self.pk)
+        
+        if user.coins < amount:
+            raise ValidationError(f"金币不足，当前余额: {user.coins}")
+        
+        user.coins -= amount
+        user.save()
+        
+        # 更新当前内存对象的余额，避免显示滞后
+        self.coins = user.coins
+        return True
+
+    @transaction.atomic
+    def receive_coins(self, amount):
+        """
+        接收金币 (用于获得赏金)
+        """
+        if amount < 0:
+            raise ValueError("接收金额不能为负数")
+            
+        user = CustomUser.objects.select_for_update().get(pk=self.pk)
+        user.coins += amount
+        user.save()
+        
+        self.coins = user.coins
+        return True
+        
+    def can_publish_tasks(self):
+        """判断是否有权限发布任务 (仅限在读生、校友、导师)"""
+        return self.status in ['student', 'alumni', 'faculty'] or self.is_staff
+    
 
 # 👇👇👇 新增：好友关系模型 👇👇👇
 class Friendship(models.Model):

@@ -5,6 +5,7 @@ from django.db.models import Count
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
+from tasks.models import TaskParticipant # 👈 引入模型
 
 # 👇 引入新模型
 from .models import ResearchTopic, Publication
@@ -29,6 +30,18 @@ def index(request):
     if online_users == 0 and request.user.is_authenticated:
         online_users = 1
 
+    # 👇👇👇 新增：日程提醒逻辑 👇👇👇
+    my_todos = []
+    if request.user.is_authenticated:
+        # 获取用户状态为 'accepted' 且任务本身未结束 (open 或 in_progress) 的记录
+        my_todos = TaskParticipant.objects.filter(
+            user=request.user,
+            status='accepted',
+            task__status__in=['open', 'in_progress']
+        ).select_related('task', 'task__creator').order_by('task__deadline')
+    # 👆👆👆 新增结束 👆👆👆
+
+
     context = {
         'announcements': announcements,
         'recent_posts': recent_posts,
@@ -36,7 +49,8 @@ def index(request):
             'users': total_users,
             'posts': total_posts,
             'online': online_users
-        }
+        },
+        'my_todos': my_todos, # 👈 把这个传给模板
     }
     
     return render(request, 'index.html', context)

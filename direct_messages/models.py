@@ -17,6 +17,9 @@ class Message(models.Model):
     content = models.TextField('内容')
     timestamp = models.DateTimeField('发送时间', auto_now_add=True)
     is_read = models.BooleanField('已读', default=False)
+    
+    # 👇👇👇 新增字段：是否已发送邮件提醒 👇👇👇
+    is_email_sent = models.BooleanField('已发送邮件提醒', default=False)
 
     class Meta:
         ordering = ['timestamp']
@@ -24,4 +27,5 @@ class Message(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        return f"From {self.sender} to {self.recipient}: {self.content[:20]}"
+        # 修改这里以避免之前的弹窗格式问题，只返回简单描述
+        return f"Message {self.id}"

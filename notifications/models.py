@@ -6,8 +6,17 @@ class Notification(models.Model):
         ('like', '点赞'),
         ('comment', '评论'),
         ('reply', '回复'),
-        ('follow', '关注'), # 👈 新增这一行
-        ('system', '系统通知')
+        ('follow', '关注'),
+        ('system', '系统通知'),
+        # 👇👇👇 新增以下好友相关类型 👇👇👇
+        ('friend_request', '好友申请'),
+        ('friend_accept', '通过好友'),
+        ('friend_reject', '拒绝好友'),
+        # 👇👇👇 新增任务相关类型 👇👇👇
+        ('task_invite', '任务邀请'),
+        ('task_accept', '接受任务'),
+        ('task_reject', '拒绝任务'),
+        ('task_settle', '任务结算'), # 获得赏金
     )
     
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications', verbose_name='接收者')
@@ -15,9 +24,6 @@ class Notification(models.Model):
     verb = models.CharField('动作', max_length=20, choices=CHOICES)
     target_url = models.CharField('跳转链接', max_length=255)
     content = models.TextField('消息摘要', blank=True, null=True)
-    is_read = models.BooleanField('已读', default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
     is_read = models.BooleanField('已读', default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

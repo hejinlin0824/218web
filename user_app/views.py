@@ -311,12 +311,13 @@ def add_friend(request, user_id):
         Friendship.objects.create(from_user=request.user, to_user=target_user)
         messages.success(request, f"已向 {target_user.nickname or target_user.username} 发送好友请求。")
         
-        # 1. 站内通知
+        # 👇👇👇 修改通知逻辑：使用 'friend_request' 👇👇👇
         Notification.objects.create(
             recipient=target_user,
             actor=request.user,
-            verb='请求添加你为好友',
-            target_url=reverse('user_app:friend_requests')
+            verb='friend_request', # 使用新类型
+            target_url=reverse('user_app:friend_requests'),
+            content='请求添加你为好友'
         )
         
         # 👇👇👇 2. 发送系统邮件 👇👇👇
@@ -370,19 +371,56 @@ def handle_friend_request(request, request_id, action):
     if action == 'accept':
         friendship.status = 'accepted'
         friendship.save()
-        messages.success(request, f"已添加 {friendship.from_user.nickname} 为好友！")
         
-        # 👇👇👇 修复点：删除了 description，将内容放入 verb 👇👇👇
+        # 👇👇👇 新增：通过好友后，自动互相关注 👇👇👇
+        # 1. 我关注他
+        request.user.following.add(friendship.from_user)
+        # 2. 他关注我
+        friendship.from_user.following.add(request.user)
+        # 👆👆👆 新增结束 👆👆👆
+        
+        messages.success(request, f"已添加 {friendship.from_user.nickname} 为好友，并已互相关注！")
+        
+        # 发送通知
         Notification.objects.create(
             recipient=friendship.from_user,
             actor=request.user,
-            verb='同意了你的好友请求', # 原来的 description 内容放这里
-            target_url=reverse('user_app:public_profile', args=[request.user.pk])
+            verb='friend_accept',
+            target_url=reverse('user_app:public_profile', args=[request.user.pk]),
+            content='通过了你的好友请求'
         )
-        # 👆👆👆 修复结束 👆👆👆
         
     elif action == 'reject':
         friendship.delete()
         messages.info(request, "已拒绝该请求。")
         
+        Notification.objects.create(
+            recipient=friendship.from_user,
+            actor=request.user,
+            verb='friend_reject',
+            target_url='#',
+            content='拒绝了你的好友请求'
+        )
+        
     return redirect('user_app:friend_requests')
+
+    # 2. 新增：删除好友视图
+@login_required
+def delete_friend(request, user_id):
+    target_user = get_object_or_404(User, pk=user_id)
+    
+    # 查找好友关系 (无论是谁发起的)
+    Friendship.objects.filter(
+        Q(from_user=request.user, to_user=target_user) | 
+        Q(from_user=target_user, to_user=request.user)
+    ).delete()
+    
+    # 👇👇👇 可选：删除好友后，是否自动取关？ 👇👇👇
+    # 通常逻辑是：删好友 = 绝交 = 互相取关
+    request.user.following.remove(target_user)
+    target_user.following.remove(request.user)
+    
+    messages.success(request, f"已解除与 {target_user.nickname or target_user.username} 的好友关系。")
+    
+    # 哪里来的回哪里，或者回主页
+    return redirect('user_app:public_profile', pk=user_id)

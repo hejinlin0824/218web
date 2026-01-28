@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Notification
+from django.http import JsonResponse
 
 @login_required
 def notification_list(request):
@@ -18,3 +19,15 @@ def mark_read_and_redirect(request, pk):
     notice.is_read = True
     notice.save()
     return redirect(notice.target_url)
+
+@login_required
+def get_unread_count(request):
+    """
+    轻量级 API：仅返回未读消息数量
+    供前端轮询使用
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'count': 0})
+        
+    count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    return JsonResponse({'count': count})

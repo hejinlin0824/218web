@@ -4,20 +4,41 @@
 {% block title %}DSSG官方门户{% endblock %}
 
 {% block content %}
+<style>
+    /* 1. 定义固定高度的容器 */
+    .tab-scroll-container {
+        height: 450px; /* 固定高度 */
+        overflow-y: auto; /* 内容超出显示滚动条 */
+        /* 美化滚动条 */
+        scrollbar-width: thin; 
+    }
+    .tab-scroll-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    .tab-scroll-container::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.1);
+        border-radius: 3px;
+    }
+    
+    /* 2. 链接长条样式 */
+    .links-bar {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+    }
+</style>
+
 <div class="p-4 mb-4 bg-white rounded-3 shadow-sm border-start border-5 border-primary">
     <div class="row align-items-center">
         <div class="col-md-9">
             <h1 class="display-6 fw-bold text-dark">新疆大学计算机学院DSSG实验室</h1>
-            <p class="fs-5 text-muted mb-0">官方信息、学术交流、毕业团聚
-            </p>
+            <p class="fs-5 text-muted mb-0">官方信息、学术交流、毕业团聚</p>
         </div>
         <div class="col-md-3 text-end d-none d-md-block">
             <div style="font-size: 3rem; opacity: 0.8;">🔬</div>
         </div>
     </div>
-
     <hr class="my-4">
-
     <div class="row text-center">
         <div class="col-4 border-end">
             <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">已加入成员</div>
@@ -26,7 +47,7 @@
             </div>
         </div>
         <div class="col-4 border-end">
-            <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">沉淀帖子</div>
+            <div class="text-secondary small text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 1px;">发布帖子</div>
             <div class="h3 fw-bold text-success mb-0 mt-2">
                 {{ stats.posts }} <span class="fs-6 text-muted fw-normal">篇</span>
             </div>
@@ -40,115 +61,197 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4" style="min-height: 400px;">
-    <div class="card-header bg-white border-bottom-0 pt-3 pb-0 px-3">
-        <ul class="nav nav-tabs card-header-tabs" id="homeTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold text-dark" id="news-tab" data-bs-toggle="tab" data-bs-target="#news-panel" type="button" role="tab">
-                    📢 实验室动态
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold text-secondary" id="community-tab" data-bs-toggle="tab" data-bs-target="#community-panel" type="button" role="tab">
-                    💬 社区讨论
-                </button>
-            </li>
-        </ul>
-    </div>
-
-    <div class="card-body p-0">
-        <div class="tab-content" id="homeTabsContent">
-            
-            <div class="tab-pane fade show active" id="news-panel" role="tabpanel">
-                <div class="list-group list-group-flush">
-                    {% for news in announcements %}
-                    <div class="list-group-item border-start-0 border-end-0 py-3 px-4">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <h6 class="mb-0 text-truncate" style="max-width: 80%;">
-                                {% if news.is_top %}
-                                    <span class="badge bg-danger me-1">置顶</span>
-                                {% endif %}
-                                <span class="fw-bold text-dark">{{ news.title }}</span>
-                            </h6>
-                            <small class="text-muted font-monospace">{{ news.created_at|date:"Y-m-d" }}</small>
-                        </div>
-                        <p class="text-secondary small mb-0 text-truncate opacity-75">
-                            {{ news.content|striptags }}
-                        </p>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-5 text-muted">
-                        <div class="fs-1 mb-2">📯</div>
-                        <p class="mb-0">暂无公告发布</p>
-                    </div>
-                    {% endfor %}
-                </div>
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0 px-3">
+                <ul class="nav nav-tabs card-header-tabs" id="homeTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold text-primary" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-panel" type="button">
+                            📅 任务日程
+                            {% if user.is_authenticated and my_todos %}
+                                <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.6rem;">{{ my_todos.count }}</span>
+                            {% endif %}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold text-secondary" id="news-tab" data-bs-toggle="tab" data-bs-target="#news-panel" type="button">
+                            📢 实验室动态
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold text-secondary" id="community-tab" data-bs-toggle="tab" data-bs-target="#community-panel" type="button">
+                            💬 社区讨论
+                        </button>
+                    </li>
+                </ul>
             </div>
 
-            <div class="tab-pane fade" id="community-panel" role="tabpanel">
-                <div class="list-group list-group-flush">
-                    {% for post in recent_posts %}
-                    <div class="list-group-item border-start-0 border-end-0 py-3 px-4 position-relative hover-shadow-light">
-                        <div class="d-flex justify-content-between align-items-start mb-1">
-                            <h6 class="mb-0 text-truncate" style="max-width: 75%;">
-                                <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link fw-bold">
-                                    {{ post.title }}
-                                </a>
-                            </h6>
-                            <small class="text-muted">{{ post.created_at|timesince }}前</small>
-                        </div>
-                        <div class="d-flex align-items-center small text-muted mt-1">
-                            <div class="d-flex align-items-center me-3">
-                                {% if post.author.avatar %}
-                                    <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" width="16" height="16" style="object-fit: cover;aspect-ratio: 1/1;">
+            <div class="card-body p-0">
+                <div class="tab-content" id="homeTabsContent">
+                    
+                    <div class="tab-pane fade show active" id="tasks-panel" role="tabpanel">
+                        <div class="tab-scroll-container">
+                            <div class="list-group list-group-flush">
+                                {% if user.is_authenticated %}
+                                    {% for item in my_todos %}
+                                        <a href="{% url 'tasks:task_detail' item.task.pk %}" class="list-group-item list-group-item-action border-start-0 border-end-0 py-3 px-4">
+                                            <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                                <h6 class="mb-0 fw-bold text-dark text-truncate" style="max-width: 70%;">
+                                                    {% if item.task.task_type == 'faculty' %}
+                                                        <span class="badge bg-danger me-1">🚨 导师指令</span>
+                                                    {% else %}
+                                                        {% if item.task.is_overdue %}
+                                                            <span class="badge bg-secondary me-1">已过期</span>
+                                                        {% else %}
+                                                            <span class="badge bg-success me-1">进行中</span>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {{ item.task.title }}
+                                                </h6>
+                                                
+                                                {% if item.task.task_type == 'faculty' %}
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">重要</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark rounded-pill">🪙 {{ item.task.bounty }}</span>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                                <small class="text-muted">
+                                                    发布人: <span class="fw-bold">{{ item.task.creator.nickname }}</span>
+                                                </small>
+                                                <small class="text-muted">
+                                                    {% if task.status == 'closed' %}
+                                                        🏁 已结束
+                                                    {% elif task.is_overdue %}
+                                                        🛑 已截止
+                                                    {% else %}
+                                                        ⏳ 剩 {{ task.deadline|timeuntil }}
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        </a>
+                                    {% empty %}
+                                        <div class="text-center py-5 text-muted h-100 d-flex flex-column justify-content-center align-items-center">
+                                            <div class="fs-1 mb-2">☕</div>
+                                            <p class="mb-2">暂无待办任务，享受生活吧！</p>
+                                            {% if user.status != 'newbie' %}
+                                                <a href="{% url 'tasks:task_create' %}" class="btn btn-sm btn-outline-primary mt-2">发布新任务</a>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
                                 {% else %}
-                                    <span class="me-1">👤</span>
+                                    <div class="text-center py-5 text-muted h-100 d-flex flex-column justify-content-center align-items-center">
+                                        <div class="fs-1 mb-2">🔒</div>
+                                        <p class="mb-3">请登录查看您的任务日程</p>
+                                        <div><a href="{% url 'user_app:login' %}" class="btn btn-primary btn-sm px-4">去登录</a></div>
+                                    </div>
                                 {% endif %}
-                                <span>{{ post.author.nickname|default:post.author.username }}</span>
                             </div>
-                            <span class="me-3">👁️ {{ post.views }}</span>
-                            <span>💬 {{ post.comment_count }}</span>
                         </div>
-                        <p class="text-secondary small mt-2 mb-0 text-truncate">
-                            {{ post.content|md_to_text|truncatechars:60 }}
-                        </p>
+                        <div class="card-footer bg-light border-top text-center py-2">
+                            <a href="{% url 'tasks:my_tasks' %}" class="text-decoration-none fw-bold small text-primary">
+                                进入任务管理中心 &raquo;
+                            </a>
+                        </div>
                     </div>
-                    {% empty %}
-                    <div class="text-center py-5 text-muted">
-                        <div class="fs-1 mb-2">🛋️</div>
-                        <p class="mb-2">社区暂时静悄悄的...</p>
-                        <a href="{% url 'community:post_create' %}" class="btn btn-sm btn-primary">去发第一篇帖子</a>
+
+                    <div class="tab-pane fade" id="news-panel" role="tabpanel">
+                        <div class="tab-scroll-container">
+                            <div class="list-group list-group-flush">
+                                {% for news in announcements %}
+                                <div class="list-group-item border-start-0 border-end-0 py-3 px-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h6 class="mb-0 text-truncate" style="max-width: 80%;">
+                                            {% if news.is_top %}
+                                                <span class="badge bg-danger me-1">置顶</span>
+                                            {% endif %}
+                                            <span class="fw-bold text-dark">{{ news.title }}</span>
+                                        </h6>
+                                        <small class="text-muted font-monospace">{{ news.created_at|date:"Y-m-d" }}</small>
+                                    </div>
+                                    <p class="text-secondary small mb-0 text-truncate opacity-75">
+                                        {{ news.content|striptags }}
+                                    </p>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5 text-muted h-100 d-flex flex-column justify-content-center">
+                                    <div class="fs-1 mb-2">📯</div>
+                                    <p class="mb-0">暂无公告发布</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light border-top text-center py-2">
+                            <span class="text-muted small">仅展示最新动态，历史公告请翻阅存档</span>
+                        </div>
                     </div>
-                    {% endfor %}
-                </div>
-                <div class="card-footer bg-light border-top text-center py-2">
-                    <a href="{% url 'community:post_list' %}" class="text-decoration-none fw-bold small text-primary">
-                        进入社区讨论区 &raquo;
-                    </a>
+
+                    <div class="tab-pane fade" id="community-panel" role="tabpanel">
+                        <div class="tab-scroll-container">
+                            <div class="list-group list-group-flush">
+                                {% for post in recent_posts %}
+                                <div class="list-group-item border-start-0 border-end-0 py-3 px-4 position-relative hover-shadow-light">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="mb-0 text-truncate" style="max-width: 75%;">
+                                            <a href="{% url 'community:post_detail' post.pk %}" class="text-decoration-none text-dark stretched-link fw-bold">
+                                                {{ post.title }}
+                                            </a>
+                                        </h6>
+                                        <small class="text-muted">{{ post.created_at|timesince }}前</small>
+                                    </div>
+                                    <div class="d-flex align-items-center small text-muted mt-1">
+                                        <div class="d-flex align-items-center me-3">
+                                            {% if post.author.avatar %}
+                                                <img src="{{ post.author.avatar.url }}" class="rounded-circle me-1" width="16" height="16" style="object-fit: cover;aspect-ratio: 1/1;">
+                                            {% else %}
+                                                <span class="me-1">👤</span>
+                                            {% endif %}
+                                            <span>{{ post.author.nickname|default:post.author.username }}</span>
+                                        </div>
+                                        <span class="me-3">👁️ {{ post.views }}</span>
+                                        <span>💬 {{ post.comment_count }}</span>
+                                    </div>
+                                    <p class="text-secondary small mt-2 mb-0 text-truncate">
+                                        {{ post.content|md_to_text|truncatechars:60 }}
+                                    </p>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5 text-muted h-100 d-flex flex-column justify-content-center">
+                                    <div class="fs-1 mb-2">🛋️</div>
+                                    <p class="mb-2">社区暂时静悄悄的...</p>
+                                    <div><a href="{% url 'community:post_create' %}" class="btn btn-sm btn-primary">去发第一篇帖子</a></div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light border-top text-center py-2">
+                            <a href="{% url 'community:post_list' %}" class="text-decoration-none fw-bold small text-primary">
+                                进入社区讨论区 &raquo;
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="card bg-light border-0 h-100">
-            <div class="card-body">
-                <h6>📅 日程提醒</h6>
-                <p class="small text-muted">暂无待办事项。</p>
-            </div>
+<div class="mt-4 mb-5">
+    <div class="links-bar p-3 d-flex flex-wrap align-items-center justify-content-between">
+        <div class="fw-bold text-dark me-3 d-flex align-items-center">
+            <span class="fs-5 me-2">🔗</span> 常用链接
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card bg-light border-0 h-100">
-            <div class="card-body">
-                <h6>🔗 常用链接</h6>
-                <a href="#" class="badge bg-secondary text-decoration-none">GitLab</a>
-                <a href="#" class="badge bg-secondary text-decoration-none">Overleaf</a>
-            </div>
+        <div class="d-flex flex-wrap gap-2 flex-grow-1 justify-content-end">
+            <a href="https://about.gitlab.com/" target="_blank" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">🦊 GitLab</a>
+            <a href="https://www.overleaf.com/" target="_blank" class="btn btn-outline-success btn-sm px-3 rounded-pill">🍃 Overleaf</a>
+            <a href="https://scholar.google.com/" target="_blank" class="btn btn-outline-primary btn-sm px-3 rounded-pill">🎓 Google Scholar</a>
+            <a href="https://arxiv.org/" target="_blank" class="btn btn-outline-danger btn-sm px-3 rounded-pill">📜 Arxiv</a>
+            <a href="https://github.com/" target="_blank" class="btn btn-outline-dark btn-sm px-3 rounded-pill">🐱 GitHub</a>
         </div>
     </div>
 </div>
+
 {% endblock %}

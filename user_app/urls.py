@@ -56,4 +56,6 @@ urlpatterns = [
     path('add-friend/<int:user_id>/', views.add_friend, name='add_friend'),
     path('requests/', views.friend_requests, name='friend_requests'),
     path('handle-request/<int:request_id>/<str:action>/', views.handle_friend_request, name='handle_request'),
+    # 👇 新增这一行
+    path('delete-friend/<int:user_id>/', views.delete_friend, name='delete_friend'),
 ]

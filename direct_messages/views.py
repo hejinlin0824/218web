@@ -12,6 +12,7 @@ from django.utils import timezone # 👈 用于格式化时间
 from django.urls import reverse
 User = get_user_model()
 
+
 @login_required
 def inbox(request):
     user = request.user
@@ -89,8 +90,11 @@ def inbox(request):
 @login_required
 def chat_room(request, user_id):
     """聊天室 (支持 AJAX)"""
+    # 🔥🔥🔥 核心修复 1：强制清空该请求中的所有待显示消息 🔥🔥🔥
+    # 这能防止之前的残留消息（比如 "From xxx..."）在刷新页面时跳出来
     storage = messages.get_messages(request)
-    storage.used = True
+    for _ in storage: 
+        pass  # 迭代一次即视为“已读取/已消费”，Django 就不会再渲染它们了
 
     target_user = get_object_or_404(User, pk=user_id)
     current_user = request.user
@@ -98,7 +102,7 @@ def chat_room(request, user_id):
     if request.method == 'POST':
         content = request.POST.get('content')
         
-        # 判断是否为 AJAX 请求 (Fetch API 会带这个头，或者我们自己手动带)
+        # 判断是否为 AJAX 请求
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
         if content and content.strip():
@@ -108,29 +112,34 @@ def chat_room(request, user_id):
                 content=content
             )
             
-            # 创建通知 (逻辑不变)
+            # 👇👇👇 【修改点 1】修复通知跳转链接 👇👇👇
             Notification.objects.create(
                 recipient=target_user,
                 actor=current_user,
                 verb='system', 
-                target_url=reverse('direct_messages:chat_room', args=[current_user.id]),
+                # 🔴 原来是指向 chat_room (可能被你视为旧版)
+                # target_url=reverse('direct_messages:chat_room', args=[current_user.id]),
+                
+                # 🟢 改为：指向 Inbox 页面，并带上 uid 参数，这样打开就是分栏视图并选中对方
+                target_url=reverse('direct_messages:inbox') + f'?uid={current_user.id}',
+                
                 content=f"发来一条私信: {content[:30]}..."
             )
-
-            # 👇👇👇 核心修改：如果是 AJAX，返回 JSON 👇👇👇
+            # 👆👆👆 修改结束 👆👆👆
+            # AJAX 返回 JSON
             if is_ajax:
                 return JsonResponse({
                     'status': 'ok',
                     'content': msg.content,
-                    'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'), # 返回格式化好的时间
+                    'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
                     'avatar_url': current_user.avatar.url if current_user.avatar else None,
                     'username_char': current_user.username[0].upper()
                 })
             
-            # 如果不是 AJAX (比如 JS 挂了)，回退到老办法
+            # 🔥🔥🔥 核心修复 2：非 AJAX 提交绝对不要添加 messages.success 🔥🔥🔥
             return redirect('direct_messages:chat_room', user_id=user_id)
 
-    # GET 请求逻辑不变
+    # GET 请求逻辑
     messages_history = Message.objects.select_related('sender').filter(
         Q(sender=current_user, recipient=target_user) |
         Q(sender=target_user, recipient=current_user)
@@ -143,40 +152,54 @@ def chat_room(request, user_id):
         'messages': messages_history
     })
 
+# 👇👇👇 修改开始：允许 GET 请求以配合前端链接 👇👇👇
 @login_required
 def delete_conversation(request, user_id):
-    """删除对话"""
+    """
+    删除对话 (从列表中移除)
+    """
+    # 获取消息存储对象（处理潜在的消息积压）
     storage = messages.get_messages(request)
     storage.used = True
 
-    if request.method == 'POST':
-        # 直接使用 ID 进行删除，不需要先查 User 对象，省一次数据库查询
-        current_user = request.user
-        
-        Message.objects.filter(
-            Q(sender=current_user, recipient_id=user_id) |
-            Q(sender_id=user_id, recipient=current_user)
-        ).delete()
+    # 逻辑修改：不仅仅检查 POST，允许 GET 请求通过
+    # 因为 inbox.html 中使用的是 <a> 标签链接，默认是 GET 请求
+    current_user = request.user
+    
+    # 执行物理删除
+    Message.objects.filter(
+        Q(sender=current_user, recipient_id=user_id) |
+        Q(sender_id=user_id, recipient=current_user)
+    ).delete()
         
     return redirect('direct_messages:inbox')
+# 👆👆👆 修改结束 👆👆👆
 
 @login_required
 def delete_chat(request, user_id):
     """删除聊天记录"""
+    # 这里的逻辑本身支持 GET，不需要大改，但为了保险起见，清理一下
     target_user = get_object_or_404(User, pk=user_id)
-    # 物理删除所有消息 (好友关系还在，所以是清空记录；非好友则相当于删除会话)
+    
     Message.objects.filter(
         Q(sender=request.user, recipient=target_user) | 
         Q(sender=target_user, recipient=request.user)
     ).delete()
     
+    # 删除后，如果是临时会话，重定向回纯净的 inbox
     return redirect('direct_messages:inbox')
 
+# 👇👇👇 修改开始：彻底去除弹窗代码 👇👇👇
 @login_required
 def send_message(request):
     """
-    处理私信发送
+    处理私信发送 (Inbox 页面的快速发送)
     """
+    # 1. 清空消息存储，防止弹窗
+    storage = messages.get_messages(request)
+    for _ in storage:
+        pass
+
     if request.method == 'POST':
         recipient_id = request.POST.get('recipient_id')
         content = request.POST.get('content')
@@ -184,14 +207,57 @@ def send_message(request):
         if recipient_id and content:
             recipient = get_object_or_404(User, pk=recipient_id)
             
-            # 创建消息
-            new_msg = Message.objects.create(
+            # 2. 创建消息记录
+            Message.objects.create(
                 sender=request.user,
                 recipient=recipient,
                 content=content
             )
             
-            # 发送成功后，直接刷新页面，不需要任何弹窗
+            # 👇👇👇 【修改点 2】修复通知跳转链接 👇👇👇
+            Notification.objects.create(
+                recipient=recipient,
+                actor=request.user,
+                verb='system', 
+                # 🟢 改为：指向 Inbox 页面，并自动选中发送者
+                target_url=reverse('direct_messages:inbox') + f'?uid={request.user.id}',
+                
+                content=f"发来一条私信: {content[:30]}..."
+            )
+            # 👆👆👆 修改结束 👆👆👆
             return redirect(f"{reverse('direct_messages:inbox')}?uid={recipient_id}")
             
     return redirect('direct_messages:inbox')
+
+@login_required
+def get_new_messages(request, sender_id):
+    """
+    API: 获取来自指定发送者的最新消息
+    前端会传过来一个 last_id (当前页面显示的最后一条消息ID)
+    """
+    sender = get_object_or_404(User, pk=sender_id)
+    last_msg_id = request.GET.get('last_id', 0)
+    
+    # 1. 查询所有 ID 比 last_msg_id 大的、由 sender 发给当前用户的消息
+    new_messages = Message.objects.filter(
+        sender=sender,
+        recipient=request.user,
+        id__gt=last_msg_id
+    ).order_by('timestamp')
+    
+    # 2. 如果有新消息，立即标记为已读 (这样导航栏的红点也会同步消失)
+    if new_messages.exists():
+        new_messages.update(is_read=True)
+    
+    # 3. 序列化数据返回给前端
+    data = []
+    for msg in new_messages:
+        data.append({
+            'id': msg.id,
+            'content': msg.content,
+            'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
+            'avatar_url': sender.avatar.url if sender.avatar else None,
+            'username_char': sender.username[0].upper()
+        })
+        
+    return JsonResponse({'messages': data})

@@ -2,14 +2,14 @@
 
 {% block title %}与 {{ target_user.nickname|default:target_user.username }} 的对话{% endblock %}
 
-{# 屏蔽全局消息弹窗 #}
+{# 🔥 核心修复：屏蔽全局消息弹窗，防止刷新页面时出现残留的 alert #}
 {% block messages %}{% endblock %}
 
 {% block content %}
 <style>
     /* === 聊天气泡核心样式 === */
     .chat-container {
-        background-color: #f5f5f5; /* 类似微信的浅灰背景 */
+        background-color: #f5f5f5;
     }
 
     /* 通用气泡样式 */
@@ -20,14 +20,13 @@
         word-wrap: break-word;
         font-size: 0.95rem;
         line-height: 1.5;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 微弱阴影 */
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     /* 我发的消息 (右侧) */
     .chat-bubble-me {
-        background: linear-gradient(135deg, #0d6efd, #0b5ed7); /* 渐变蓝 */
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
         color: white;
-        /* 左上、右上、右下(尖角)、左下 */
         border-radius: 12px 12px 2px 12px;
         margin-left: 10px;
     }
@@ -36,8 +35,7 @@
     .chat-bubble-other {
         background-color: white;
         color: #333;
-        border: 1px solid #e5e5e5; /* 极细边框 */
-        /* 左上(尖角)、右上、右下、左下 */
+        border: 1px solid #e5e5e5;
         border-radius: 2px 12px 12px 12px;
         margin-right: 10px;
     }
@@ -55,48 +53,38 @@
     .chat-avatar {
         width: 36px;
         height: 36px;
-        border-radius: 6px; /* 方形圆角头像，更像微信 */
+        border-radius: 6px;
         object-fit: cover;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    /* 👇👇👇 新增：移动端适配 👇👇👇 */
+
+    /* 移动端适配 */
     @media (max-width: 768px) {
-        /* 1. 让卡片铺满剩余高度，去掉圆角和边框，像原生 App 一样 */
         .card {
-            height: calc(100vh - 80px) !important; /* 减去顶部导航栏高度 */
+            height: calc(100vh - 80px) !important;
             border: none !important;
             border-radius: 0 !important;
         }
-        
-        /* 2. 调整内边距，手机寸土寸金 */
         .card-body {
             padding: 10px;
         }
-
-        /* 3. 气泡最大宽度稍微变大一点，因为手机屏窄 */
         .chat-bubble {
             max-width: 85%;
         }
-        
-        /* 4. 隐藏面包屑或不重要的按钮，节省空间 */
         .btn-light {
             padding: 4px 8px;
             font-size: 0.8rem;
         }
-        
-        /* 5. 调整底部输入栏 */
         .card-footer {
             padding: 8px;
-            position: fixed; /* 固定在底部，防止键盘顶起布局乱掉 */
+            position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
             z-index: 1000;
         }
-        
-        /* 为了防止内容被固定的底部遮挡，给内容区加个底部 margin */
         #chatBox {
-            padding-bottom: 70px; 
+            padding-bottom: 70px;
         }
     }
 </style>
@@ -121,9 +109,9 @@
                 <div class="d-flex flex-column gap-3" id="chatListContainer">
                     {% for msg in messages %}
                         {% if msg.sender == user %}
-                            <div class="d-flex justify-content-end align-items-start">
+                            <div class="d-flex justify-content-end align-items-start" data-msg-id="{{ msg.id }}">
                                 <div class="chat-bubble chat-bubble-me">
-                                    {{ msg.content }}
+                                    <div class="text-break" style="white-space: pre-wrap;">{{ msg.content }}</div>
                                     <span class="chat-time text-white-50">{{ msg.timestamp|date:"H:i" }}</span>
                                 </div>
                                 <div class="ms-2">
@@ -137,7 +125,7 @@
                                 </div>
                             </div>
                         {% else %}
-                            <div class="d-flex justify-content-start align-items-start">
+                            <div class="d-flex justify-content-start align-items-start" data-msg-id="{{ msg.id }}">
                                 <div class="me-2">
                                     {% if target_user.avatar %}
                                         <img src="{{ target_user.avatar.url }}" class="chat-avatar">
@@ -148,7 +136,7 @@
                                     {% endif %}
                                 </div>
                                 <div class="chat-bubble chat-bubble-other">
-                                    {{ msg.content }}
+                                    <div class="text-break" style="white-space: pre-wrap;">{{ msg.content }}</div>
                                     <span class="chat-time text-muted">{{ msg.timestamp|date:"H:i" }}</span>
                                 </div>
                             </div>
@@ -180,11 +168,72 @@
 </div>
 
 <script>
+    // 滚动到底部函数
     function scrollToBottom() {
         const chatBox = document.getElementById('chatBox');
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatBox) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     }
 
+    // 自动轮询新消息逻辑
+    function fetchNewMessages() {
+        // 1. 获取当前页面显示的最后一条消息的 ID
+        const messages = document.querySelectorAll('[data-msg-id]');
+        let lastId = 0;
+        if (messages.length > 0) {
+            lastId = messages[messages.length - 1].getAttribute('data-msg-id');
+        }
+
+        // 2. 发送请求给服务器
+        fetch(`{% url 'direct_messages:get_new_messages' target_user.id %}?last_id=${lastId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.messages.length > 0) {
+                    // 3. 如果有新消息，清除"暂无消息"占位符
+                    if (document.getElementById('emptyPlaceholder')) {
+                        document.getElementById('emptyPlaceholder').remove();
+                    }
+
+                    const container = document.getElementById('chatListContainer');
+
+                    // 4. 循环插入每一条新消息
+                    data.messages.forEach(msg => {
+                        let avatarHtml = '';
+                        if (msg.avatar_url) {
+                            avatarHtml = `<img src="${msg.avatar_url}" class="chat-avatar">`;
+                        } else {
+                            avatarHtml = `<div class="chat-avatar bg-secondary text-white d-flex align-items-center justify-content-center fw-bold">${msg.username_char}</div>`;
+                        }
+
+                        // 构建 HTML (对方发的消息在左侧)
+                        // 注意：这里我们加上 data-msg-id，以便下一次轮询时能更新 lastId
+                        const msgHtml = `
+                            <div class="d-flex justify-content-start align-items-start mb-3 animate__animated animate__fadeInLeft animate__faster" data-msg-id="${msg.id}">
+                                <div class="me-2">
+                                    ${avatarHtml}
+                                </div>
+                                <div class="chat-bubble chat-bubble-other">
+                                    <div class="text-break" style="white-space: pre-wrap;">${msg.content}</div>
+                                    <span class="chat-time text-muted">${msg.timestamp}</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        container.insertAdjacentHTML('beforeend', msgHtml);
+                    });
+
+                    // 5. 收到新消息后，滚动到底部
+                    scrollToBottom();
+                }
+            })
+            .catch(e => console.error("轮询出错:", e));
+    }
+
+    // ⏳ 每 2000 毫秒 (2秒) 检查一次新消息
+    setInterval(fetchNewMessages, 2000);
+
+    // 页面加载完成后滚动到底部
     window.onload = scrollToBottom;
 
     const form = document.getElementById('chatForm');
@@ -192,7 +241,7 @@
     const container = document.getElementById('chatListContainer');
     const emptyPlaceholder = document.getElementById('emptyPlaceholder');
 
-    // 处理回车发送
+    // 处理回车发送 (Shift+Enter 换行，Enter 发送)
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -200,6 +249,7 @@
         }
     });
 
+    // 发送消息 (AJAX)
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const content = input.value;
@@ -217,7 +267,7 @@
             if (data.status === 'ok') {
                 if (emptyPlaceholder) emptyPlaceholder.remove();
 
-                // 获取头像 URL (如果没有头像，显示首字母)
+                // 获取头像 URL
                 let avatarHtml = '';
                 if (data.avatar_url) {
                     avatarHtml = `<img src="${data.avatar_url}" class="chat-avatar">`;
@@ -226,10 +276,11 @@
                     avatarHtml = `<div class="chat-avatar bg-primary text-white d-flex align-items-center justify-content-center fw-bold">${initial}</div>`;
                 }
 
-                // 2. 构建新消息 HTML (必须与上面的 CSS 类一致)
-                // 这里加了 animate.css 的动画效果
+                // 我发的消息 (插入到右侧)
+                // 注意：后端返回 JSON 中需要包含 id，如果没有 id，这里 data.id 会是 undefined，导致下次轮询重复拉取
+                // 确保 views.py 中 JsonResponse 返回了 'id': msg.id
                 const msgHtml = `
-                    <div class="d-flex justify-content-end align-items-start animate__animated animate__fadeInUp animate__faster">
+                    <div class="d-flex justify-content-end align-items-start mb-3 animate__animated animate__fadeInUp animate__faster" data-msg-id="${data.id || 0}">
                         <div class="chat-bubble chat-bubble-me">
                             <div class="text-break" style="white-space: pre-wrap;">${data.content}</div>
                             <span class="chat-time text-white-50">${data.timestamp}</span>
@@ -246,9 +297,7 @@
                 scrollToBottom();
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+        .catch(error => console.error('Error:', error));
     });
 </script>
 

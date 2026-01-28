@@ -2,6 +2,9 @@
 
 {% block title %}我的私信{% endblock %}
 
+{# 🔥🔥🔥 核心修复 6：在 Inbox 页面也屏蔽全局弹窗 🔥🔥🔥 #}
+{% block messages %}{% endblock %}
+
 {% block sidebar %}{% endblock %}
 
 {% block content_container %}
@@ -136,16 +139,17 @@
                             <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown">•••</button>
                             <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
                                 <li>
-                                    <a class="dropdown-item text-danger" href="{% url 'direct_messages:delete_chat' active_user.id %}" onclick="return confirm('确定要清空聊天记录吗？')">
-                                        🗑️ {% if active_user in request.user.get_friends %}清空记录{% else %}删除会话{% endif %}
-                                    </a>
+                                    {% if active_user in request.user.get_friends %}
+                                        <a class="dropdown-item text-danger" href="{% url 'direct_messages:delete_chat' active_user.id %}" onclick="return confirm('确定要清空聊天记录吗？')">
+                                            🗑️ 清空记录
+                                        </a>
+                                    {% else %}
+                                        <a class="dropdown-item text-danger" href="{% url 'direct_messages:delete_conversation' active_user.id %}" onclick="return confirm('确定要删除该对话吗？')">
+                                            🗑️ 删除会话
+                                        </a>
+                                    {% endif %}
                                 </li>
-                                {% if active_user not in request.user.get_friends %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'user_app:add_friend' active_user.id %}">➕ 加为好友</a>
-                                </li>
-                                {% endif %}
-                            </ul>
+                                </ul>
                         </div>
                     </div>
 

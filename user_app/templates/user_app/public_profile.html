@@ -117,7 +117,15 @@
                     {% endif %}
 
                     {% if user.is_authenticated and user != target_user %}
-                        <div class="d-grid gap-2">
+                    <div class="d-grid gap-2">
+                        
+                        {% if target_user in request.user.get_friends %}
+                            <a href="{% url 'user_app:delete_friend' target_user.pk %}" 
+                            class="btn btn-danger w-100 rounded-pill"
+                            onclick="return confirm('确定要删除好友吗？这将同时取消互相关注。')">
+                                💔 解除好友关系
+                            </a>
+                        {% else %}
                             <form action="{% url 'user_app:follow_user' target_user.pk %}" method="post">
                                 {% csrf_token %}
                                 {% if is_following %}
@@ -131,13 +139,26 @@
                                 {% endif %}
                             </form>
                             
-                            <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary rounded-pill">
-                                ✉️ 发私信
+                            <div class="d-flex gap-2 mt-2">
+                                <a href="{% url 'user_app:add_friend' target_user.pk %}" class="btn btn-outline-success flex-grow-1 rounded-pill">
+                                    🤝 加好友
+                                </a>
+                                <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary flex-grow-1 rounded-pill">
+                                    ✉️ 发私信
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if target_user in request.user.get_friends %}
+                            <a href="{% url 'direct_messages:chat_room' target_user.pk %}" class="btn btn-outline-primary mt-2 rounded-pill">
+                                ✉️ 发消息
                             </a>
-                        </div>
-                    {% elif user == target_user %}
-                        <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
-                    {% endif %}
+                        {% endif %}
+
+                    </div>
+                {% elif user == target_user %}
+                    <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary w-100 rounded-pill">编辑我的资料</a>
+                {% endif %}
                 </div>
             </div>
 

@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
+<script src="https://unpkg.com/vditor/dist/method.min.js"></script>
+
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h2 class="fw-bold mb-2">
+                            {% if task.task_type == 'faculty' %}
+                                <span class="text-danger">[导师指令]</span>
+                            {% endif %}
+                            {{ task.title }}
+                        </h2>
+                        <div class="d-flex gap-3 text-muted small mb-3">
+                            <span>发布人: <a href="{% url 'user_app:public_profile' task.creator.pk %}">{{ task.creator.nickname|default:task.creator.username }}</a></span>
+                            <span>发布于: {{ task.created_at|date:"Y-m-d" }}</span>
+                            
+                            <span>
+                                {% if task.status == 'closed' %}
+                                    <span class="text-secondary fw-bold">🏁 任务已结束</span>
+                                {% elif task.is_overdue %}
+                                    <span class="text-secondary fw-bold">🛑 已截止 ({{ task.deadline|date:"m-d H:i" }})</span>
+                                {% else %}
+                                    ⏳ 剩余: 
+                                    <span id="countdown-timer" 
+                                          data-deadline="{{ task.deadline|date:'c' }}" 
+                                          class="text-danger fw-bold font-monospace">
+                                        计算中...
+                                    </span>
+                                {% endif %}
+                            </span>
+                            </div>
+                    </div>
+                    <div class="text-end">
+                        {% if task.task_type == 'faculty' %}
+                            <div class="badge bg-danger fs-6 mb-2">优先级: MAX</div>
+                        {% else %}
+                            <div class="display-6 fw-bold text-warning">🪙 {{ task.bounty }}</div>
+                        {% endif %}
+                        <div class="badge bg-light text-dark border d-block">{{ task.get_status_display }}</div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div id="task-content" class="vditor-reset fs-5"></div>
+                <div id="raw-content" style="display:none;">{{ task.content }}</div>
+            </div>
+        </div>
+
+        {% if is_creator %}
+            <div class="card shadow-sm border-0 border-start border-5 border-primary mb-4">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>👑 发起人管理控制台</span>
+                    <a href="{% url 'tasks:task_delete' task.pk %}" 
+                       class="btn btn-sm btn-outline-danger"
+                       onclick="return confirm('确定要撤销此任务吗？\n如果任务未结束，预扣的金币将退还。')">
+                        🗑️ 撤销/删除任务
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if task.status == 'closed' %}
+                        <div class="alert alert-success">
+                            🏁 任务已结束。获胜者：
+                            {% if task.winner %}
+                                <a href="{% url 'user_app:public_profile' task.winner.pk %}" class="fw-bold">{{ task.winner.nickname|default:task.winner.username }}</a>
+                            {% else %}
+                                <span class="text-muted">无 (直接关闭)</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <h6 class="mb-3">参与者名单 (请在任务完成后选择一位 MVP 进行打赏结算)</h6>
+                        
+                        <form method="post" action="{% url 'tasks:settle_task' task.pk %}" onsubmit="return confirm('确定要结束任务并将赏金转给该用户吗？此操作不可撤销！')">
+                            {% csrf_token %}
+                            <div class="table-responsive mb-3">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>选择</th>
+                                            <th>参与者</th>
+                                            <th>当前状态</th>
+                                            <th>加入时间</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for p in all_participants %}
+                                        <tr class="{% if p.status == 'quit' or p.status == 'rejected' %}text-muted opacity-50{% endif %}">
+                                            <td>
+                                                <input type="radio" name="winner_id" value="{{ p.user.id }}" 
+                                                       class="form-check-input" required 
+                                                       {% if p.status != 'accepted' %}disabled{% endif %}>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if p.user.avatar %}
+                                                        <img src="{{ p.user.avatar.url }}" width="30" height="30" class="rounded-circle me-2" style="object-fit: cover;">
+                                                    {% else %}
+                                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" 
+                                                             style="width: 30px; height: 30px; font-size: 0.8rem; font-weight: bold;">
+                                                            {{ p.user.username.0|upper }}
+                                                        </div>
+                                                    {% endif %}
+                                                    <a href="{% url 'user_app:public_profile' p.user.pk %}" class="text-decoration-none text-dark">
+                                                        {{ p.user.nickname|default:p.user.username }}
+                                                    </a>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if p.status == 'invited' %}<span class="badge bg-secondary">未响应</span>
+                                                {% elif p.status == 'accepted' %}<span class="badge bg-success">进行中</span>
+                                                {% elif p.status == 'rejected' %}<span class="badge bg-danger">已拒绝</span>
+                                                {% elif p.status == 'quit' %}<span class="badge bg-dark">已退出</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ p.updated_at|date:"m-d" }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">暂无参与者</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="submit" class="btn btn-warning fw-bold">
+                                    {% if task.bounty > 0 %}
+                                        🏆 选定 MVP 并结算赏金
+                                    {% else %}
+                                        🏁 标记任务完成
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if participant_record and not is_creator %}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body text-center p-4">
+                    <h5 class="mb-3">您的当前状态：
+                        {% if participant_record.status == 'accepted' %}
+                            <span class="badge bg-success">✅ 进行中</span>
+                        {% elif participant_record.status == 'invited' %}
+                            <span class="badge bg-info text-dark">📩 待回应</span>
+                        {% elif participant_record.status == 'quit' %}
+                            <span class="badge bg-dark">🏳️ 已退出</span>
+                        {% endif %}
+                    </h5>
+                    
+                    {% if task.status == 'closed' %}
+                        <p class="text-muted">🏁 任务已结束。</p>
+                    {% else %}
+                        {% if participant_record.status == 'invited' %}
+                            
+                            {% if task.task_type == 'faculty' %}
+                                <div class="alert alert-warning">
+                                    <strong>🚨 必修任务</strong><br>
+                                    这是导师直接指派的任务，系统已自动为您接受。请按时完成。
+                                </div>
+                                <div class="d-flex justify-content-center">
+                                    <a href="{% url 'direct_messages:chat_room' task.creator.pk %}" class="btn btn-primary rounded-pill">💬 汇报进展</a>
+                                </div>
+                            {% else %}
+                                <p>您收到了此任务的邀请，是否接受？</p>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <a href="{% url 'tasks:handle_invite' task.pk 'accept' %}" class="btn btn-success px-4 rounded-pill">✅ 接受挑战</a>
+                                    <a href="{% url 'tasks:handle_invite' task.pk 'reject' %}" class="btn btn-outline-secondary px-4 rounded-pill">🚫 婉言拒绝</a>
+                                </div>
+                            {% endif %}
+
+                        {% elif participant_record.status == 'accepted' %}
+                            <p class="text-success">您正在参与此任务，加油！完成后请联系发起人验收。</p>
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{% url 'direct_messages:chat_room' task.creator.pk %}" class="btn btn-primary btn-sm rounded-pill">💬 联系发起人</a>
+                                
+                                {% if task.task_type != 'faculty' %}
+                                    <a href="{% url 'tasks:handle_invite' task.pk 'quit' %}" class="btn btn-outline-danger btn-sm rounded-pill" onclick="return confirm('确定要放弃任务吗？')">🏳️ 放弃任务</a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Vditor 渲染
+        const text = document.getElementById('raw-content').textContent;
+        Vditor.preview(document.getElementById('task-content'), text, {
+            mode: 'light',
+            anchor: 1,
+        });
+
+        // 👇👇👇 动态倒计时脚本 👇👇👇
+        const timerSpan = document.getElementById('countdown-timer');
+        if (timerSpan) {
+            const deadline = new Date(timerSpan.dataset.deadline).getTime();
+
+            function updateTimer() {
+                const now = new Date().getTime();
+                const distance = deadline - now;
+
+                if (distance < 0) {
+                    timerSpan.innerHTML = "🛑 已截止";
+                    timerSpan.className = "text-secondary fw-bold";
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                timerSpan.innerHTML = `${days}天 ${hours}时 ${minutes}分 ${seconds}秒`;
+            }
+
+            setInterval(updateTimer, 1000);
+            updateTimer(); // 立即执行一次
+        }
+    });
+</script>
+{% endblock %}
