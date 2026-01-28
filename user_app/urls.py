@@ -52,4 +52,8 @@ urlpatterns = [
     path('profile/<int:pk>/follow/', views.follow_user, name='follow_user'),
     path('profile/<int:pk>/following/', views.following_list, name='following_list'),
     path('profile/<int:pk>/followers/', views.followers_list, name='followers_list'),
+    path('search/', views.search_users, name='search_users'),
+    path('add-friend/<int:user_id>/', views.add_friend, name='add_friend'),
+    path('requests/', views.friend_requests, name='friend_requests'),
+    path('handle-request/<int:request_id>/<str:action>/', views.handle_friend_request, name='handle_request'),
 ]

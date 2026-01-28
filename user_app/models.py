@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
 import os
+from django.conf import settings
 
 def user_avatar_path(instance, filename):
     # 使用 UUID 生成唯一文件名 (例如 550e8400-e29b....jpg)
@@ -91,3 +92,46 @@ class CustomUser(AbstractUser):
         假设每 100 成长值升 1 级
         """
         return self.growth % 100
+
+    # 👇 新增 helper 方法：获取我的所有好友 (已同意的)
+    def get_friends(self):
+        # 查询 Friendship 表，状态为 accepted，且我是 from_user 或 to_user
+        friendships = Friendship.objects.filter(
+            models.Q(from_user=self) | models.Q(to_user=self),
+            status='accepted'
+        )
+        friends = []
+        for f in friendships:
+            if f.from_user == self:
+                friends.append(f.to_user)
+            else:
+                friends.append(f.from_user)
+        return friends
+
+    def is_friend_with(self, other_user):
+        return Friendship.objects.filter(
+            models.Q(from_user=self, to_user=other_user) | 
+            models.Q(from_user=other_user, to_user=self),
+            status='accepted'
+        ).exists()
+
+# 👇👇👇 新增：好友关系模型 👇👇👇
+class Friendship(models.Model):
+    STATUS_CHOICES = (
+        ('pending', '等待验证'),
+        ('accepted', '已添加'),
+        ('rejected', '已拒绝'),
+    )
+    
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='friendship_creator', on_delete=models.CASCADE)
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='friendship_receiver', on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('from_user', 'to_user') # 防止重复请求
+        verbose_name = '好友关系'
+        verbose_name_plural = verbose_name
+        
+    def __str__(self):
+        return f"{self.from_user} -> {self.to_user} ({self.status})"

@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}添加好友{% endblock %}
+
+{% block sidebar %}{% endblock %}
+
+{% block content_container %}
+<div class="col-12">
+    <div class="container py-3">
+        <div class="mb-4">
+            <a href="{% url 'direct_messages:inbox' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-arrow-left"></i> 返回消息中心
+            </a>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-4">🔍 搜索校友/导师</h4>
+                        
+                        <form method="get" class="mb-4">
+                            <div class="input-group">
+                                <input type="text" name="q" class="form-control form-control-lg" placeholder="输入昵称、用户名或学号..." value="{{ query }}">
+                                <button class="btn btn-primary btn-lg" type="submit">搜索</button>
+                            </div>
+                        </form>
+
+                        {% if query %}
+                            <h6 class="text-muted mb-3">搜索结果</h6>
+                            <div class="list-group">
+                                {% for u in users %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                    <div class="d-flex align-items-center">
+                                        {% if u.avatar %}
+                                            <img src="{{ u.avatar.url }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" 
+                                                 style="width: 50px; height: 50px; font-size: 1.5rem;">
+                                                {{ u.username.0|upper }}
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <h5 class="mb-0 fw-bold">
+                                                <a href="{% url 'user_app:public_profile' u.pk %}" class="text-decoration-none text-dark">{{ u.nickname|default:u.username }}</a>
+                                            </h5>
+                                            <span class="badge bg-light text-dark border">{{ u.get_status_display }}</span>
+                                            <small class="text-muted ms-2">Lv.{{ u.level }}</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        {% if u in request.user.get_friends %}
+                                            <button class="btn btn-secondary btn-sm" disabled>已是好友</button>
+                                        {% else %}
+                                            <a href="{% url 'user_app:add_friend' u.pk %}" class="btn btn-outline-primary btn-sm">
+                                                + 添加好友
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5 text-muted">未找到匹配的用户</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

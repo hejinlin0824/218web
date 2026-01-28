@@ -2,110 +2,205 @@
 
 {% block title %}我的私信{% endblock %}
 
-{# 👇 关键：屏蔽全局弹窗消息 👇 #}
-{% block messages %}{% endblock %}
+{% block sidebar %}{% endblock %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">💌 我的私信</h5>
-                <span class="badge bg-primary rounded-pill">{{ conversations|length }}</span>
-            </div>
+{% block content_container %}
+<div class="col-12">
+    <div class="container mt-2">
+        <div class="row g-0 rounded-4 shadow-sm overflow-hidden" style="height: calc(100vh - 90px); border: 1px solid #dee2e6;">
             
-            <div class="list-group list-group-flush">
-                {% for msg in conversations %}
-                    
-                    {# 逻辑：确定谁是对方 (target) #}
-                    {% if msg.sender == user %}
-                        {% with target=msg.recipient %}
-                        <div class="list-group-item list-group-item-action p-0 d-flex align-items-center hover-bg-light">
-                            
-                            <a href="{% url 'direct_messages:chat_room' target.id %}" class="flex-grow-1 p-3 text-decoration-none text-dark d-flex align-items-center">
-                                <div class="me-3 position-relative">
-                                    {% if target.avatar %}
-                                        <img src="{{ target.avatar.url }}" class="rounded-circle border" width="50" height="50" style="object-fit: cover;aspect-ratio: 1/1;">
-                                    {% else %}
-                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                            {{ target.username.0|upper }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                <div class="overflow-hidden">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <h6 class="mb-0 fw-bold">{{ target.nickname|default:target.username }}</h6>
-                                        <small class="text-muted ms-2">{{ msg.timestamp|timesince }}前</small>
-                                    </div>
-                                    <p class="mb-0 small text-muted text-truncate">
-                                        <span class="text-primary">我:</span> {{ msg.content }}
-                                    </p>
-                                </div>
-                            </a>
-
-                            <form action="{% url 'direct_messages:delete_conversation' target.id %}" method="post" class="px-3 border-start" onsubmit="return confirm('确定要删除与 {{ target.nickname|default:target.username }} 的记录吗？');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-link text-danger p-0 text-decoration-none" title="删除会话">
-                                    🗑️
-                                </button>
-                            </form>
-                        </div>
-                        {% endwith %}
-                    
-                    {% else %}
-                        {# 对方发的 #}
-                        {% with target=msg.sender %}
-                        <div class="list-group-item list-group-item-action p-0 d-flex align-items-center hover-bg-light">
-                            
-                            <a href="{% url 'direct_messages:chat_room' target.id %}" class="flex-grow-1 p-3 text-decoration-none text-dark d-flex align-items-center">
-                                <div class="me-3 position-relative">
-                                    {% if target.avatar %}
-                                        <img src="{{ target.avatar.url }}" class="rounded-circle border" width="50" height="50" style="object-fit: cover;aspect-ratio: 1/1;">
-                                    {% else %}
-                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                            {{ target.username.0|upper }}
-                                        </div>
-                                    {% endif %}
-                                    
-                                    {% if not msg.is_read %}
-                                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
-                                    {% endif %}
-                                </div>
-                                <div class="overflow-hidden">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <h6 class="mb-0 fw-bold">{{ target.nickname|default:target.username }}</h6>
-                                        <small class="text-muted ms-2">{{ msg.timestamp|timesince }}前</small>
-                                    </div>
-                                    <p class="mb-0 small text-muted text-truncate">
-                                        {{ msg.content }}
-                                    </p>
-                                </div>
-                            </a>
-
-                            <form action="{% url 'direct_messages:delete_conversation' target.id %}" method="post" class="px-3 border-start" onsubmit="return confirm('确定要删除与 {{ target.nickname|default:target.username }} 的记录吗？');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-link text-danger p-0 text-decoration-none" title="删除会话">
-                                    🗑️
-                                </button>
-                            </form>
-                        </div>
-                        {% endwith %}
-                    {% endif %}
-
-                {% empty %}
-                    <div class="text-center py-5 text-muted">
-                        <div class="fs-1 mb-2">📭</div>
-                        <p>暂时没有私信</p>
+            <div class="col-md-4 bg-white border-end d-flex flex-column">
+                
+                <div class="p-3 border-bottom bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <a href="{% url 'home' %}" class="text-decoration-none text-secondary small">
+                            <i class="bi bi-arrow-left"></i> 返回主页
+                        </a>
                     </div>
-                {% endfor %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">消息中心</h5>
+                        <div>
+                            <a href="{% url 'user_app:friend_requests' %}" class="btn btn-sm btn-outline-primary position-relative me-1" title="好友请求">
+                                🙋‍♂️
+                            </a>
+                            {% if user.status != 'newbie' %}
+                            <a href="{% url 'user_app:search_users' %}" class="btn btn-sm btn-primary" title="添加好友">
+                                + 好友
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-auto flex-grow-1 custom-scrollbar">
+                    
+                    <div class="p-2 bg-light text-secondary small fw-bold border-bottom">我的好友 ({{ friends_list|length }})</div>
+                    <div class="list-group list-group-flush border-bottom">
+                        {% for item in friends_list %}
+                        <a href="?uid={{ item.user.id }}" class="list-group-item list-group-item-action border-0 py-3 {% if active_user == item.user %}bg-primary bg-opacity-10{% endif %}">
+                            <div class="d-flex align-items-center">
+                                {% if item.user.avatar %}
+                                    <img src="{{ item.user.avatar.url }}" class="rounded-circle me-3 border" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3 border" 
+                                         style="width: 40px; height: 40px; font-size: 1.2rem;">
+                                        {{ item.user.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold text-truncate">{{ item.user.nickname|default:item.user.username }}</h6>
+                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                            {% if item.last_msg %}
+                                                {{ item.last_msg.timestamp|date:"m-d" }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <p class="mb-0 small text-muted text-truncate">
+                                        {% if item.last_msg %}
+                                            {{ item.last_msg.content|default:"[图片]"|truncatechars:15 }}
+                                        {% else %}
+                                            暂无消息
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-3 text-muted small">暂无好友</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="p-2 bg-light text-secondary small fw-bold border-bottom mt-2">临时会话</div>
+                    <div class="list-group list-group-flush">
+                        {% for item in temp_chat_list %}
+                        <a href="?uid={{ item.user.id }}" class="list-group-item list-group-item-action border-0 py-3 {% if active_user == item.user %}bg-primary bg-opacity-10{% endif %}">
+                            <div class="d-flex align-items-center">
+                                {% if item.user.avatar %}
+                                    <img src="{{ item.user.avatar.url }}" class="rounded-circle me-3 grayscale-img" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3 grayscale-img" 
+                                         style="width: 40px; height: 40px; font-size: 1.2rem;">
+                                        {{ item.user.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 text-secondary">{{ item.user.nickname|default:item.user.username }}</h6>
+                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                            {% if item.last_msg %}
+                                                {{ item.last_msg.timestamp|date:"m-d" }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <p class="mb-0 small text-muted text-truncate">
+                                        {% if item.last_msg %}
+                                            {{ item.last_msg.content|default:"[图片]"|truncatechars:15 }}
+                                        {% else %}
+                                            暂无消息
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-3 text-muted small">暂无临时消息</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8 bg-white d-flex flex-column">
+                {% if active_user %}
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'user_app:public_profile' active_user.id %}" class="text-decoration-none text-dark d-flex align-items-center">
+                                {% if active_user.avatar %}
+                                    <img src="{{ active_user.avatar.url }}" class="rounded-circle me-2" style="width: 35px; height: 35px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" 
+                                         style="width: 35px; height: 35px; font-size: 1rem;">
+                                        {{ active_user.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                                <h6 class="mb-0 fw-bold">{{ active_user.nickname|default:active_user.username }}</h6>
+                            </a>
+                            {% if active_user in request.user.get_friends %}
+                                <span class="badge bg-success ms-2" style="font-size: 0.6rem;">好友</span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-2" style="font-size: 0.6rem;">临时</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown">•••</button>
+                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{% url 'direct_messages:delete_chat' active_user.id %}" onclick="return confirm('确定要清空聊天记录吗？')">
+                                        🗑️ {% if active_user in request.user.get_friends %}清空记录{% else %}删除会话{% endif %}
+                                    </a>
+                                </li>
+                                {% if active_user not in request.user.get_friends %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'user_app:add_friend' active_user.id %}">➕ 加为好友</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow-1 p-4 overflow-auto custom-scrollbar" id="chat-messages">
+                        {% for msg in messages %}
+                            <div class="d-flex mb-3 {% if msg.sender == request.user %}justify-content-end{% endif %}">
+                                {% if msg.sender != request.user %}
+                                    {% if msg.sender.avatar %}
+                                        <img src="{{ msg.sender.avatar.url }}" class="rounded-circle me-2 align-self-end" style="width: 30px; height: 30px;">
+                                    {% else %}
+                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 align-self-end" 
+                                             style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                            {{ msg.sender.username.0|upper }}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                                <div class="card border-0 shadow-sm {% if msg.sender == request.user %}bg-primary text-white{% else %}bg-light{% endif %}" style="max-width: 70%; border-radius: 15px;">
+                                    <div class="card-body py-2 px-3">
+                                        <p class="mb-0">{{ msg.content }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="p-3 border-top">
+                        <form method="post" action="{% url 'direct_messages:send_message' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="recipient_id" value="{{ active_user.id }}">
+                            <div class="input-group">
+                                <input type="text" name="content" class="form-control rounded-pill bg-light border-0" placeholder="发送消息..." required autocomplete="off">
+                                <button class="btn btn-primary rounded-pill ms-2 px-4" type="submit">发送</button>
+                            </div>
+                        </form>
+                    </div>
+
+                {% else %}
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100 text-muted">
+                        <div class="display-1 mb-3">💬</div>
+                        <p>选择一个好友或会话开始聊天</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    .hover-bg-light:hover { background-color: #f8f9fa; }
-    /* 修复删除按钮的样式，让它看起来更干净 */
-    .btn-link:hover { opacity: 0.7; }
+    .grayscale-img { filter: grayscale(100%); opacity: 0.7; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 3px; }
 </style>
+
+<script>
+    const chatBox = document.getElementById('chat-messages');
+    if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+</script>
 {% endblock %}

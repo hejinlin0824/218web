@@ -7,13 +7,20 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
 import threading
+from django.db.models import Q
 import uuid # 👈 用于生成随机Token
 from django.core.cache import cache # 👈 引入缓存
 from django.contrib.auth.hashers import make_password # 👈 用于手动加密密码
+from django.core.mail import send_mail # 👈 引入发邮件模块
+from django.conf import settings         # 👈 引入设置
 
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import RegisterForm, ProfileUpdateForm
 from notifications.models import Notification
+# 👇👇👇 必须补全这一行导入 👇👇👇
+from .models import CustomUser, Friendship 
+# 👆👆👆 之前可能漏了 CustomUser 👆👆👆
+from .models import CustomUser, Friendship
 
 User = get_user_model()
 
@@ -250,3 +257,132 @@ def followers_list(request, pk):
     users = target_user.followers.all()
     context = {'title': f"{target_user.nickname or target_user.username} 的粉丝", 'user_list': users}
     return render(request, 'user_app/follow_list.html', context)
+
+
+# 1. 搜索用户视图
+@login_required
+def search_users(request):
+    # 👇👇👇 新增：权限拦截逻辑 👇👇👇
+    # 定义允许搜索的身份列表：在读、毕业、导师
+    allowed_status = ['student', 'alumni', 'faculty']
+    
+    # 如果用户身份不在允许列表中 (即 newbie 新生)
+    if request.user.status not in allowed_status:
+        messages.warning(request, "录取后可以使用")
+        # 拦截后跳转回个人中心或大厅
+        return redirect('user_app:profile') 
+    # 👆👆👆 新增结束 👆👆👆
+
+    query = request.GET.get('q', '')
+    users = []
+    
+    if query:
+        # 搜索逻辑：排除自己，搜索用户名、昵称或学号
+        # 注意：这里我们允许搜到任何人，但只有特定身份的人能发起搜索
+        users = CustomUser.objects.filter(
+            Q(username__icontains=query) | 
+            Q(nickname__icontains=query) |
+            Q(student_id__icontains=query)
+        ).exclude(pk=request.user.pk)
+
+    return render(request, 'user_app/search_users.html', {'users': users, 'query': query})
+
+# 2. 发送好友请求
+# 2. 发送好友请求
+@login_required
+def add_friend(request, user_id):
+    target_user = get_object_or_404(CustomUser, pk=user_id)
+    
+    if request.user.status == 'newbie':
+        messages.error(request, "权限不足。")
+        return redirect('user_app:profile')
+
+    existing_relation = Friendship.objects.filter(
+        Q(from_user=request.user, to_user=target_user) |
+        Q(from_user=target_user, to_user=request.user)
+    ).first()
+
+    if existing_relation:
+        if existing_relation.status == 'accepted':
+            messages.info(request, "你们已经是好友了。")
+        elif existing_relation.status == 'pending':
+            messages.info(request, "请求已发送，请等待对方通过。")
+    else:
+        Friendship.objects.create(from_user=request.user, to_user=target_user)
+        messages.success(request, f"已向 {target_user.nickname or target_user.username} 发送好友请求。")
+        
+        # 1. 站内通知
+        Notification.objects.create(
+            recipient=target_user,
+            actor=request.user,
+            verb='请求添加你为好友',
+            target_url=reverse('user_app:friend_requests')
+        )
+        
+        # 👇👇👇 2. 发送系统邮件 👇👇👇
+        if target_user.email:
+            try:
+                # 生成完整的审批链接 (例如: http://yourdomain.com/users/requests/)
+                approval_url = request.build_absolute_uri(reverse('user_app:friend_requests'))
+                
+                subject = f'[Web 218 实验室-好友申请] {request.user.nickname or request.user.username} 请求添加您为好友'
+                
+                message = f"""
+                你好 {target_user.nickname or target_user.username}:
+
+                {request.user.nickname or request.user.username} (身份: {request.user.get_status_display()}) 请求添加你为好友。
+
+                点击下方链接前往处理请求：
+                {approval_url}
+
+
+                -------------------------
+                Web 218 DSSG Lab Center
+                218 大王发
+                """
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [target_user.email],
+                    fail_silently=True, # 如果发不出去不报错，防止影响页面跳转
+                )
+            except Exception as e:
+                print(f"邮件发送失败: {e}")
+        # 👆👆👆 邮件发送结束 👆👆👆
+
+    return redirect('user_app:search_users')
+
+# 3. 查看好友请求列表
+@login_required
+def friend_requests(request):
+    # 我收到的所有 pending 请求
+    requests = Friendship.objects.filter(to_user=request.user, status='pending')
+    return render(request, 'user_app/friend_requests.html', {'requests': requests})
+
+# 4. 处理请求 (接受/拒绝)
+# 4. 处理请求
+@login_required
+def handle_friend_request(request, request_id, action):
+    friendship = get_object_or_404(Friendship, pk=request_id, to_user=request.user)
+    
+    if action == 'accept':
+        friendship.status = 'accepted'
+        friendship.save()
+        messages.success(request, f"已添加 {friendship.from_user.nickname} 为好友！")
+        
+        # 👇👇👇 修复点：删除了 description，将内容放入 verb 👇👇👇
+        Notification.objects.create(
+            recipient=friendship.from_user,
+            actor=request.user,
+            verb='同意了你的好友请求', # 原来的 description 内容放这里
+            target_url=reverse('user_app:public_profile', args=[request.user.pk])
+        )
+        # 👆👆👆 修复结束 👆👆👆
+        
+    elif action == 'reject':
+        friendship.delete()
+        messages.info(request, "已拒绝该请求。")
+        
+    return redirect('user_app:friend_requests')
