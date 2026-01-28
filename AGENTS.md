@@ -1,43 +1,49 @@
 # AGENTS.md - Guidelines for Agentic Coding in this Repository
 
-## Project Overview
-This is a Django 6.0.1 web application with three main apps: `core`, `user_app`, and `Github_trend`.
+## 项目概述
+Django 6.0.1 Web 应用，包含 8 个应用：`core`, `user_app`, `Github_trend`, `community`, `notifications`, `news`, `direct_messages`, `haystack`（全文检索）
 
-## Build/Lint/Test Commands
+## 构建/检查/测试命令
 
-### Running Tests
+### 运行测试
 ```bash
-# Run all tests
+# 运行所有测试
 python manage.py test
 
-# Run tests for a specific app
+# 运行指定应用测试
 python manage.py test user_app
 python manage.py test core
-python manage.py test Github_trend
+python manage.py test community
 
-# Run a single test (use the full path to the test)
+# 运行单个测试（完整路径）
 python manage.py test user_app.tests.YourTestCase.test_method_name
 
-# Run with verbosity (more detailed output)
+# 详细输出模式
 python manage.py test --verbosity=2
+
+# 调试单个测试（遇到错误时进入 pdb）
+python manage.py test --debug-mode
 ```
 
-### Development Commands
+### 开发命令
 ```bash
-# Run development server
+# 启动开发服务器
 python manage.py runserver
 
-# Create migrations
-python manage.py makemigrations
+# 创建迁移
+python manage.py makemigrations [app_name]
 
-# Apply migrations
+# 应用迁移
 python manage.py migrate
 
-# Create superuser
+# 创建超级用户
 python manage.py createsuperuser
 
-# Django shell
+# Django Shell
 python manage.py shell
+
+# 搜索索引重建（Haystack）
+python manage.py rebuild_index
 ```
 
 ## Code Style Guidelines
@@ -128,3 +134,16 @@ def upload_path(instance, filename):
 - **Custom User Model**: Extends AbstractUser with additional fields (nickname, bio, avatar, email_verified)
 - **Service layer pattern**: Extract external API logic into service classes (e.g., `GitHubService`)
 - **Class-based views**: Use `as_view()` with class-based auth views, pass `template_name` param
+
+## Celery 异步任务
+- 使用 `@shared_task` 装饰器定义任务
+- 配置 Redis 作为 broker（默认 `redis://127.0.0.1:6379/0`）
+- 使用 `get_user_model()` 获取 User 模型
+- 任务中使用 try-except 处理异常，返回 "Success" 或 "Failed"
+
+## Haystack 全文检索
+- 使用 Whoosh 引擎，索引存储在 `whoosh_index/` 目录
+- 创建 `search_indexes.py` 定义索引类
+- 使用 `use_template=True` 从模板文件读取索引内容
+- 运行 `python manage.py rebuild_index` 重建搜索索引
+- 使用 `HAYSTACK_SIGNAL_PROCESSOR` 自动更新索引
