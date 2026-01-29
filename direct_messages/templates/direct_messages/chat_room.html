@@ -419,14 +419,14 @@
             </div>
 
             <div class="card-footer bg-white py-3 border-top">
-                <form method="post" id="chatForm" class="d-flex gap-2 align-items-end">
+                <form id="chatForm" class="d-flex gap-2 align-items-end" onsubmit="return false;">
                     {% csrf_token %}
                     <textarea name="content" id="msgInput" class="form-control bg-light border-0" rows="1"
                               placeholder="发消息..." required
                               style="resize: none; border-radius: 20px; padding: 10px 15px; max-height: 100px; font-size: 16px;"
                               oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
 
-                    <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    <button type="button" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                             id="sendBtn" style="width: 44px; height: 44px; min-width: 44px; touch-action: manipulation;">
                         <span style="font-size: 1.2rem; margin-top: -2px;">➤</span>
                     </button>
@@ -437,6 +437,7 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     // 滚动到底部函数
     function scrollToBottom() {
         const chatBox = document.getElementById('chatBox');
@@ -460,8 +461,9 @@
             .then(data => {
                 if (data.messages.length > 0) {
                     // 3. 如果有新消息，清除"暂无消息"占位符
-                    if (document.getElementById('emptyPlaceholder')) {
-                        document.getElementById('emptyPlaceholder').remove();
+                    const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+                    if (emptyPlaceholder) {
+                        emptyPlaceholder.remove();
                     }
 
                     const container = document.getElementById('chatListContainer');
@@ -476,7 +478,6 @@
                         }
 
                         // 构建 HTML (对方发的消息在左侧)
-                        // 注意：这里我们加上 data-msg-id，以便下一次轮询时能更新 lastId
                         const msgHtml = `
                             <div class="d-flex justify-content-start align-items-start mb-3 animate__animated animate__fadeInLeft animate__faster" data-msg-id="${msg.id}">
                                 <div class="me-2">
@@ -488,7 +489,7 @@
                                 </div>
                             </div>
                         `;
-                        
+
                         container.insertAdjacentHTML('beforeend', msgHtml);
                     });
 
@@ -503,24 +504,22 @@
     setInterval(fetchNewMessages, 2000);
 
     // 页面加载完成后滚动到底部
-    window.onload = scrollToBottom;
+    scrollToBottom();
 
+    // 获取DOM元素
     const form = document.getElementById('chatForm');
     const input = document.getElementById('msgInput');
     const container = document.getElementById('chatListContainer');
     const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+    const sendBtn = document.getElementById('sendBtn');
 
-    // 处理回车发送 (Shift+Enter 换行，Enter 发送)
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            form.requestSubmit();
-        }
-    });
+    if (!form || !input || !container || !sendBtn) {
+        console.error('聊天室DOM元素未找到');
+        return;
+    }
 
-    // 发送消息 (AJAX)
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
+    // 发送消息函数
+    function submitMessage() {
         const content = input.value;
         if (!content.trim()) return;
 
@@ -534,7 +533,9 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'ok') {
-                if (emptyPlaceholder) emptyPlaceholder.remove();
+                if (emptyPlaceholder && document.body.contains(emptyPlaceholder)) {
+                    emptyPlaceholder.remove();
+                }
 
                 // 获取头像 URL
                 let avatarHtml = '';
@@ -546,10 +547,8 @@
                 }
 
                 // 我发的消息 (插入到右侧)
-                // 注意：后端返回 JSON 中需要包含 id，如果没有 id，这里 data.id 会是 undefined，导致下次轮询重复拉取
-                // 确保 views.py 中 JsonResponse 返回了 'id': msg.id
                 const msgHtml = `
-                    <div class="d-flex justify-content-end align-items-start mb-3 animate__animated animate__fadeInUp animate__faster" data-msg-id="${data.id || 0}">
+                    <div class="d-flex justify-content-end align-items-start mb-3 animate__animated animate__fadeInUp animate__faster" data-msg-id="${data.id}">
                         <div class="chat-bubble chat-bubble-me">
                             <div class="text-break" style="white-space: pre-wrap;">${data.content}</div>
                             <span class="chat-time text-white-50">${data.timestamp}</span>
@@ -561,14 +560,43 @@
                 `;
 
                 container.insertAdjacentHTML('beforeend', msgHtml);
+
+                // 清空输入框并保持焦点
                 input.value = '';
                 input.style.height = '';
+                input.focus();  // 保持光标在输入框中
                 scrollToBottom();
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('发送消息失败:', error);
+        });
+    }
+
+    // 处理回车发送 (Shift+Enter 换行，Enter 发送)
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitMessage();
+        }
     });
+
+    // 点击发送按钮
+    sendBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitMessage();
+    });
+
+    // 表单提交事件（阻止默认行为）
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitMessage();
+    });
+});
 </script>
+
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 

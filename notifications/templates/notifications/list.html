@@ -1,21 +1,28 @@
 {% extends 'base.html' %}
+{% load community_extras %}
 {% block title %}消息中心{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-bottom">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold">🔔 消息中心</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" name="mark_all_read" class="btn btn-sm btn-outline-primary">
+                        ✅ 一键已读
+                    </button>
+                </form>
             </div>
-            <div class="list-group list-group-flush">
+            <div class="list-group list-group-flush" id="notificationList">
                 {% for notice in notifications %}
                 <a href="{% url 'notifications:read_and_redirect' notice.pk %}" class="list-group-item list-group-item-action py-3 {% if not notice.is_read %}bg-light{% endif %}">
                     <div class="d-flex w-100 justify-content-between mb-1">
-                        <small class="text-muted">{{ notice.created_at|timesince }}前</small>
+                        <small class="text-muted">{{ notice.created_at|smart_time }}</small>
                         {% if not notice.is_read %}<span class="badge bg-danger rounded-pill">NEW</span>{% endif %}
                     </div>
-                    
+
                     <div class="d-flex align-items-start">
                         <div class="me-3">
                             {% if notice.actor.avatar %}
@@ -29,21 +36,21 @@
 
                         <div>
                             <span class="fw-bold text-dark">{{ notice.actor.nickname|default:notice.actor.username }}</span>
-                            
+
                             {% if notice.verb == 'like' %}
                                 <span class="text-secondary">❤️ 赞了你的帖子</span>
-                            
+
                             {% elif notice.verb == 'comment' %}
                                 <span class="text-secondary">💬 评论了你的帖子:</span>
                                 <div class="text-muted small mt-1">"{{ notice.content }}"</div>
-                            
+
                             {% elif notice.verb == 'reply' %}
                                 <span class="text-secondary">↩️ 回复了你的评论:</span>
                                 <div class="text-muted small mt-1">"{{ notice.content }}"</div>
-                            
+
                             {% elif notice.verb == 'follow' %}
                                 <span class="text-primary">👤 关注了你</span>
-                            
+
                             {% elif notice.verb == 'friend_request' %}
                                 <span class="text-primary fw-bold">👋 请求添加你为好友</span>
                                 <div class="mt-2">
@@ -58,7 +65,7 @@
 
                             {% elif notice.verb == 'task_invite' %}
                                 <span class="text-warning fw-bold">📜 {{ notice.content }}</span>
-                            
+
                             {% elif notice.verb == 'task_settle' %}
                                 <span class="text-success fw-bold">💰 {{ notice.content }}</span>
 
@@ -74,6 +81,21 @@
                     <p>暂无新消息</p>
                 </div>
                 {% endfor %}
+
+                {% if has_more %}
+                <form method="post" class="d-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="current_limit" value="{{ current_limit }}">
+                    <button type="submit" name="load_more" class="list-group-item list-group-item-action text-center text-primary py-3">
+                        <span id="loadMoreText">查看更多通知</span>
+                        <small class="d-block text-muted mt-1">还有 {{ total_count|add:"-"|add:current_limit }} 条未显示</small>
+                    </button>
+                </form>
+                {% else %}
+                <div class="text-center py-3 text-muted small">
+                    已显示全部 {{ total_count }} 条通知
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -130,6 +130,7 @@ def chat_room(request, user_id):
             if is_ajax:
                 return JsonResponse({
                     'status': 'ok',
+                    'id': msg.id,  # 添加消息ID，防止重复拉取
                     'content': msg.content,
                     'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
                     'avatar_url': current_user.avatar.url if current_user.avatar else None,
