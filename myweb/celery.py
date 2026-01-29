@@ -16,4 +16,8 @@ app.conf.beat_schedule = {
         'task': 'direct_messages.tasks.send_unread_message_reminders',
         'schedule': 60.0, # 每 60 秒运行一次
     },
+    'auto-settle-expired-tasks-every-minute': {
+        'task': 'tasks.tasks.auto_settle_expired_tasks',
+        'schedule': 60.0, # 每 60 秒运行一次
+    },
 }

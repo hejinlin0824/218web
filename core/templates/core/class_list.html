@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}班级管理 - 导师控制台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">🎓 班级管理</h3>
+            <p class="text-muted small mb-0">管理您的学生团队，支持一键发布班级任务</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary">返回主页</a>
+            <a href="{% url 'core:class_create' %}" class="btn btn-primary shadow-sm">
+                + 组建新班级
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for cls in classes %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold text-primary">{{ cls.name }}</h5>
+                    <span class="badge bg-primary rounded-pill">{{ cls.students.count }} 人</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        {{ cls.description|default:"暂无简介" }}
+                    </p>
+                    
+                    <h6 class="fw-bold small text-secondary">成员列表：</h6>
+                    <div class="border rounded p-2 bg-light custom-scrollbar" style="max-height: 120px; overflow-y: auto;">
+                        {% for student in cls.students.all %}
+                            <span class="badge bg-white text-dark border me-1 mb-1 shadow-sm">
+                                {{ student.nickname|default:student.username }}
+                            </span>
+                        {% empty %}
+                            <span class="text-muted small fst-italic">暂无成员，请点击管理添加。</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-top-0 d-flex justify-content-between py-3">
+                    <span class="text-muted small align-self-center">创建于 {{ cls.created_at|date:"Y-m-d" }}</span>
+                    <div>
+                        <a href="{% url 'core:class_edit' cls.pk %}" class="btn btn-sm btn-outline-primary me-1">
+                            ⚙️ 管理/加人
+                        </a>
+                        <a href="{% url 'core:class_delete' cls.pk %}" 
+                           class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('⚠️ 确定要解散【{{ cls.name }}】吗？此操作不可恢复！')">
+                            🗑️ 解散
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5 bg-white rounded shadow-sm">
+                <div class="display-1 mb-3">🏫</div>
+                <h4 class="text-muted">您还没有创建任何班级</h4>
+                <p class="text-secondary mb-4">创建班级后，您可以向该班级一键发布强制任务。</p>
+                <a href="{% url 'core:class_create' %}" class="btn btn-primary px-4 rounded-pill">立即创建</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

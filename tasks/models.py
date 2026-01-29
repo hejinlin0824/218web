@@ -28,6 +28,9 @@ class Task(models.Model):
     status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default='open')
     deadline = models.DateTimeField('截止时间')
     
+    # 是否班级任务（用于自动结算时判断分配规则）
+    is_class_task = models.BooleanField('是否班级任务', default=False)
+    
     # 获胜者 (任务结束时由发起人指定)
     winner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='won_tasks', verbose_name='最终获胜者')
     

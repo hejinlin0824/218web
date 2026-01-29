@@ -4,6 +4,28 @@
 {% block title %}DSSG官方门户{% endblock %}
 
 {% block content %}
+{% if user.is_authenticated and user.status == 'faculty' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 border-start border-5 border-danger">
+            <div class="card-body d-flex justify-content-between align-items-center p-4">
+                <div>
+                    <h4 class="fw-bold text-danger mb-1">👨‍🏫 导师控制台</h4>
+                    <p class="text-muted mb-0 small">您拥有管理实验室班级和发布指令的权限</p>
+                </div>
+                <div class="d-flex gap-3">
+                    <a href="{% url 'core:class_management' %}" class="btn btn-danger text-white">
+                        🎓 班级管理
+                    </a>
+                    <a href="{% url 'tasks:task_create' %}" class="btn btn-outline-danger">
+                        🚀 发布任务
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 <style>
     /* 1. 定义固定高度的容器 */
     .tab-scroll-container {

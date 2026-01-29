@@ -9,24 +9,25 @@
 <style>
     /* 美化复选框列表 */
     .user-select-container {
-        max-height: 300px;
+        max-height: 250px;
         overflow-y: auto;
         border: 1px solid #dee2e6;
         border-radius: 0.375rem;
-        background: #f8f9fa;
+        background: #fff;
         padding: 10px;
     }
     
     .user-option-card {
         background: white;
         border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 8px 12px;
-        margin-bottom: 8px;
+        border-radius: 6px;
+        padding: 6px 10px;
+        margin-bottom: 6px;
         cursor: pointer;
         transition: all 0.2s;
         display: flex;
         align-items: center;
+        font-size: 0.9rem;
     }
     
     .user-option-card:hover {
@@ -36,25 +37,17 @@
     
     /* 隐藏原生 checkbox */
     .user-option-card input[type="checkbox"] {
-        width: 1.2em;
-        height: 1.2em;
-        margin-right: 10px;
+        width: 1.1em;
+        height: 1.1em;
+        margin-right: 8px;
         cursor: pointer;
     }
 
-    .user-avatar-small {
-        width: 32px; 
-        height: 32px; 
-        border-radius: 50%; 
-        object-fit: cover;
-        border: 2px solid #fff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    /* 班级选择卡片高亮 */
+    .class-selector-card {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0d6efd;
     }
-    
-    .role-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; }
-    .role-student { background: #e3f2fd; color: #0d6efd; }
-    .role-alumni { background: #fff3cd; color: #856404; }
-    .role-faculty { background: #d1e7dd; color: #0f5132; }
 </style>
 
 <div class="row justify-content-center">
@@ -68,7 +61,10 @@
                     {% csrf_token %}
                     
                     {% if form.errors %}
-                        <div class="alert alert-danger">{{ form.errors }}</div>
+                        <div class="alert alert-danger">
+                            <strong>提交出错：</strong>
+                            {{ form.errors }}
+                        </div>
                     {% endif %}
 
                     <div class="row">
@@ -103,18 +99,40 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">选择执行人 (已过滤新生)</label>
+                    <hr class="my-4">
+
+                    <h5 class="fw-bold mb-3">👥 选择执行对象</h5>
+
+                    {% if user.status == 'faculty' %}
+                    <div class="card mb-4 class-selector-card">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-primary">🏫 快捷通道：按班级发送</label>
+                            {{ form.target_class }}
+                            <div class="form-text mt-2 text-dark">
+                                <i class="bi bi-info-circle-fill"></i> 
+                                选择班级后，该班级内的所有学生将<b>自动加入</b>任务并<b>强制接受</b>（无需学生确认）。
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">➕ 添加其他执行人 (可选)</label>
                         <div class="user-select-container custom-scrollbar">
                             {% for checkbox in form.invitees %}
                                 <label class="user-option-card">
                                     {{ checkbox.tag }} 
-                                    
-                                    <span class="fw-bold text-dark">{{ checkbox.choice_label }}</span>
+                                    <span class="text-dark">{{ checkbox.choice_label }}</span>
                                 </label>
                             {% endfor %}
                         </div>
-                        <div class="form-text">导师发布的任务将被强制指派，普通任务需对方接受。</div>
+                        <div class="form-text text-muted">
+                            {% if user.status == 'faculty' %}
+                                如果已选择班级，此处可额外添加班级以外的人员。
+                            {% else %}
+                                选中的人员将收到任务邀请。
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="mb-4">
@@ -124,7 +142,7 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg rounded-pill">🚀 立即发布</button>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">🚀 立即发布</button>
                     </div>
                 </form>
             </div>
@@ -133,10 +151,10 @@
 </div>
 
 <script>
-    // Vditor 初始化 (保持不变)
+    // Vditor 初始化
     const vditor = new Vditor('vditor', {
         height: 400,
-        placeholder: '详细描述...',
+        placeholder: '在此输入任务详细描述，支持 Markdown 语法...',
         cache: { enable: false },
         preview: { math: { engine: 'KaTeX' } },
         upload: {
@@ -155,18 +173,25 @@
         }
     });
 
+    // 表单提交时同步编辑器内容
     document.getElementById('taskForm').addEventListener('submit', function(e) {
-        document.getElementById('hiddenContent').value = vditor.getValue();
+        const content = vditor.getValue();
+        if (!content.trim()) {
+            e.preventDefault();
+            alert("请填写任务详情内容");
+            return;
+        }
+        document.getElementById('hiddenContent').value = content;
     });
 
-    // 导师类型切换逻辑
+    // 导师类型切换逻辑 (联动金币输入框状态)
     const typeSelect = document.getElementById('id_task_type');
     const bountyInput = document.getElementById('id_bounty');
     const bountyCol = document.getElementById('bounty-col');
 
     if (typeSelect) {
-        typeSelect.addEventListener('change', function() {
-            if (this.value === 'faculty') {
+        function toggleBounty() {
+            if (typeSelect.value === 'faculty') {
                 bountyInput.value = 0;
                 bountyCol.style.opacity = '0.5';
                 bountyInput.readOnly = true;
@@ -174,7 +199,11 @@
                 bountyCol.style.opacity = '1';
                 bountyInput.readOnly = false;
             }
-        });
+        }
+        // 初始化运行一次
+        toggleBounty();
+        // 监听变化
+        typeSelect.addEventListener('change', toggleBounty);
     }
 </script>
 {% endblock %}

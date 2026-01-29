@@ -24,6 +24,7 @@ def task_create(request):
         return redirect('home')
 
     if request.method == 'POST':
+        # 传入 user 以便 Form 过滤班级
         form = TaskCreateForm(request.POST, user=request.user)
         if form.is_valid():
             try:
@@ -31,57 +32,105 @@ def task_create(request):
                     task = form.save(commit=False)
                     task.creator = request.user
                     
-                    # --- 逻辑分支：导师指令 vs 普通悬赏 ---
+                    # --- 1. 任务类型与扣费逻辑 ---
+                    # 判断是否班级任务
+                    target_class = form.cleaned_data.get('target_class')
+                    task.is_class_task = bool(target_class)
+                    
                     if task.task_type == 'faculty':
-                        # 导师任务：强制 0 金币，状态直接为“进行中”
+                        # 导师指令：强制 0 金币，状态直接为"进行中"
                         task.bounty = 0 
                         task.status = 'in_progress' 
                     else:
-                        # 普通任务：扣除金币，状态默认为“招募中”
+                        # 普通任务：扣除金币，状态默认为"招募中"
+                        # 注意：如果是普通悬赏但选了班级，下面逻辑会把人设为 accepted，
+                        # 但任务本身状态如果是 open，有人 accepted 后会自动转 in_progress (在 handle logic 里)，
+                        # 这里为了简化，如果涉及班级强制指派，建议直接设为 in_progress
                         if task.bounty > 0:
                             request.user.deduct_coins(task.bounty)
-                        task.status = 'open'
+                        
+                        # 如果选了班级，说明有人直接进场，任务状态应为进行中
+                        if target_class:
+                            task.status = 'in_progress'
+                        else:
+                            task.status = 'open'
                             
                     task.save()
 
-                    # --- 处理参与者 ---
-                    invitees = form.cleaned_data['invitees']
-                    participant_list = []
-                    recipient_ids = [] # 用于发邮件
+                    # --- 2. 参与者合并逻辑 (核心) ---
+                    # 我们需要一个字典来去重：{User对象: status字符串}
+                    # 优先级：'accepted' (班级/导师指令) > 'invited' (普通邀请)
                     
+                    final_participants = {} 
+                    
+                    # A. 处理班级成员 (优先级最高：强制接受)
+                    if target_class:
+                        for student in target_class.students.all():
+                            final_participants[student] = 'accepted'
+                    
+                    # B. 处理手动勾选的个人
+                    invitees = form.cleaned_data.get('invitees', [])
                     for user in invitees:
-                        # 状态判定：导师任务直接 'accepted'，普通任务 'invited'
-                        initial_status = 'accepted' if task.task_type == 'faculty' else 'invited'
-                        
-                        participant_list.append(
-                            TaskParticipant(task=task, user=user, status=initial_status)
+                        if user in final_participants:
+                            # 如果这个人已经在班级里被加过了，保持 'accepted' 不变
+                            continue
+                        else:
+                            # 如果不在班级里，看是不是导师指令
+                            if task.task_type == 'faculty':
+                                final_participants[user] = 'accepted'
+                            else:
+                                final_participants[user] = 'invited'
+
+                    # 确保至少有一个人
+                    if not final_participants:
+                        # 回滚事务需要抛出异常
+                        raise Exception("必须选择至少一名执行人或一个班级。")
+
+                    # --- 3. 批量创建记录与通知 ---
+                    participant_objs = []
+                    notification_objs = []
+                    recipient_ids_for_email = []
+
+                    for user, status in final_participants.items():
+                        # 创建参与记录对象
+                        participant_objs.append(
+                            TaskParticipant(task=task, user=user, status=status)
                         )
-                        recipient_ids.append(user.id)
+                        recipient_ids_for_email.append(user.id)
                         
-                        # 构建通知文案
-                        verb = 'task_invite'
-                        if task.task_type == 'faculty':
-                            content = f"🚨 [导师指令] 指派给你的任务：{task.title}"
+                        # 构建通知内容
+                        if status == 'accepted':
+                            if task.task_type == 'faculty':
+                                content = f"🚨 [导师指令] 指派给你的任务：{task.title}"
+                            else:
+                                content = f"🏫 [班级任务] 你被自动加入任务：{task.title}"
+                            notif_verb = 'task_invite' # 或者用 task_assign
                         else:
                             content = f"邀请你参与悬赏任务：{task.title}"
-                        
-                        # 发送站内信
-                        Notification.objects.create(
-                            recipient=user,
-                            actor=request.user,
-                            verb=verb,
-                            target_url=reverse('tasks:task_detail', args=[task.id]),
-                            content=content
+                            notif_verb = 'task_invite'
+
+                        # 创建通知对象
+                        notification_objs.append(
+                            Notification(
+                                recipient=user,
+                                actor=request.user,
+                                verb=notif_verb,
+                                target_url=reverse('tasks:task_detail', args=[task.id]),
+                                content=content
+                            )
                         )
-                    
-                    # 批量写入数据库
-                    TaskParticipant.objects.bulk_create(participant_list)
+
+                    # 批量写入数据库 (性能优化)
+                    # ignore_conflicts=True 在这里其实不需要了，因为我们用 dict 去重了，但留着保险
+                    TaskParticipant.objects.bulk_create(participant_objs, ignore_conflicts=True)
+                    Notification.objects.bulk_create(notification_objs)
                     
                     # 触发异步邮件任务
-                    send_task_invitation_emails.delay(task.id, recipient_ids)
+                    send_task_invitation_emails.delay(task.id, recipient_ids_for_email)
 
+                # 成功提示
                 msg_type = "导师指令" if task.task_type == 'faculty' else "悬赏任务"
-                messages.success(request, f"{msg_type}发布成功！已通知 {len(invitees)} 位成员。")
+                messages.success(request, f"{msg_type}发布成功！共覆盖 {len(final_participants)} 人。")
                 return redirect('tasks:my_tasks')
 
             except Exception as e:
@@ -179,6 +228,11 @@ def handle_invite(request, pk, action):
 @login_required
 def settle_task(request, pk):
     task = get_object_or_404(Task, pk=pk, creator=request.user)
+    
+    # 如果任务已经关闭（可能已被自动结算），不允许手动结算
+    if task.status == 'closed':
+        messages.error(request, "任务已结束，无法再次结算。")
+        return redirect('tasks:task_detail', pk=pk)
     
     if request.method == 'POST':
         winner_id = request.POST.get('winner_id')
