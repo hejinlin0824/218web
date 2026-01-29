@@ -102,8 +102,12 @@ def chat_room(request, user_id):
     if request.method == 'POST':
         content = request.POST.get('content')
         
-        # 判断是否为 AJAX 请求
-        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        # 👇👇👇 修改开始：更强健的 AJAX 检测 👇👇👇
+        is_ajax = (
+            request.headers.get('x-requested-with') == 'XMLHttpRequest' or
+            request.accepts('application/json')
+        )
+        # 👆👆👆 修改结束 👆👆👆
 
         if content and content.strip():
             msg = Message.objects.create(
@@ -126,18 +130,18 @@ def chat_room(request, user_id):
                 content=f"发来一条私信: {content[:30]}..."
             )
             # 👆👆👆 修改结束 👆👆👆
-            # AJAX 返回 JSON
+            # AJAX 请求返回 JSON
             if is_ajax:
                 return JsonResponse({
                     'status': 'ok',
-                    'id': msg.id,  # 添加消息ID，防止重复拉取
+                    'id': msg.id,
                     'content': msg.content,
                     'timestamp': timezone.localtime(msg.timestamp).strftime('%H:%M'),
                     'avatar_url': current_user.avatar.url if current_user.avatar else None,
                     'username_char': current_user.username[0].upper()
                 })
             
-            # 🔥🔥🔥 核心修复 2：非 AJAX 提交绝对不要添加 messages.success 🔥🔥🔥
+            # 非 AJAX 请求才重定向（刷新页面）
             return redirect('direct_messages:chat_room', user_id=user_id)
 
     # GET 请求逻辑
@@ -232,25 +236,32 @@ def send_message(request):
 
 @login_required
 def get_new_messages(request, sender_id):
-    """
-    API: 获取来自指定发送者的最新消息
-    前端会传过来一个 last_id (当前页面显示的最后一条消息ID)
-    """
     sender = get_object_or_404(User, pk=sender_id)
     last_msg_id = request.GET.get('last_id', 0)
     
-    # 1. 查询所有 ID 比 last_msg_id 大的、由 sender 发给当前用户的消息
+    # 转换为整数，防止报错
+    try:
+        last_msg_id = int(last_msg_id)
+    except ValueError:
+        last_msg_id = 0
+
+    # 🔍 调试打印 (你可以看下终端输出了什么)
+    # print(f"User {request.user} polling messages from {sender} after ID {last_msg_id}")
+
+    # 查询条件：
+    # 1. 发送者是 sender (对方)
+    # 2. 接收者是 request.user (我)
+    # 3. ID 大于前端传来的 last_id
     new_messages = Message.objects.filter(
         sender=sender,
         recipient=request.user,
         id__gt=last_msg_id
     ).order_by('timestamp')
     
-    # 2. 如果有新消息，立即标记为已读 (这样导航栏的红点也会同步消失)
+    # 标记已读
     if new_messages.exists():
         new_messages.update(is_read=True)
     
-    # 3. 序列化数据返回给前端
     data = []
     for msg in new_messages:
         data.append({

@@ -6,6 +6,9 @@
 {% block messages %}{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/vditor/3.8.12/index.css" />
+<script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/vditor/3.8.12/method.min.js" defer></script>
+
 <style>
     /* === 聊天气泡核心样式 === */
     .chat-container {
@@ -230,133 +233,6 @@
         }
     }
 </style>
-<style>
-    /* === 聊天气泡核心样式 === */
-    .chat-container {
-        background-color: #f5f5f5;
-    }
-
-    /* 聊天卡片布局 */
-    .chat-card {
-        height: calc(100vh - 150px);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .chat-card .card-body {
-        flex: 1;
-        min-height: 0;
-        overflow: auto;
-        max-height: calc(100vh - 250px);
-    }
-
-    .chat-card .card-footer {
-        flex-shrink: 0;
-    }
-
-    /* 通用气泡样式 */
-    .chat-bubble {
-        padding: 10px 14px;
-        max-width: 75%;
-        position: relative;
-        word-wrap: break-word;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    /* 我发的消息 (右侧) */
-    .chat-bubble-me {
-        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-        color: white;
-        border-radius: 12px 12px 2px 12px;
-        margin-left: 10px;
-    }
-
-    /* 对方发的消息 (左侧) */
-    .chat-bubble-other {
-        background-color: white;
-        color: #333;
-        border: 1px solid #e5e5e5;
-        border-radius: 2px 12px 12px 12px;
-        margin-right: 10px;
-    }
-
-    /* 时间戳样式 */
-    .chat-time {
-        display: block;
-        font-size: 0.7rem;
-        margin-top: 4px;
-        opacity: 0.7;
-        text-align: right;
-    }
-
-    /* 头像样式 */
-    .chat-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 6px;
-        object-fit: cover;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    /* 移动端适配 */
-    @media (max-width: 768px) {
-        .chat-card {
-            height: calc(100vh - 120px) !important;
-            border: none !important;
-            border-radius: 0 !important;
-        }
-        .chat-card .card-body {
-            max-height: calc(100vh - 200px) !important;
-        }
-        .card-body {
-            padding: 10px;
-        }
-        .chat-bubble {
-            max-width: 85%;
-        }
-        .btn-light {
-            padding: 4px 8px;
-            font-size: 0.8rem;
-        }
-        .card-footer {
-            padding: 8px;
-        }
-    }
-        .card-body {
-            padding: 10px;
-        }
-        .chat-bubble {
-            max-width: 85%;
-        }
-        .btn-light {
-            padding: 4px 8px;
-            font-size: 0.8rem;
-        }
-    .card-footer {
-        flex-shrink: 0;
-    }
-
-    /* 自定义滚动条 */
-    .chat-card .card-body::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .chat-card .card-body::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-
-    .chat-card .card-body::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 4px;
-    }
-
-    .chat-card .card-body::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-</style>
 
 <div class="row justify-content-center">
     <div class="col-md-8">
@@ -437,166 +313,191 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 滚动到底部函数
-    function scrollToBottom() {
-        const chatBox = document.getElementById('chatBox');
-        if (chatBox) {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    }
+    // 🔴 3. 核心修改：分离发送/接收逻辑，增加自动聚焦，修复轮询
+    const targetUserId = "{{ target_user.id }}";
+    const currentUserAvatar = "{% if user.avatar %}{{ user.avatar.url }}{% endif %}";
+    const currentUserChar = "{{ user.username.0|upper }}";
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("✅ 聊天室修复版脚本已启动");
 
-    // 自动轮询新消息逻辑
-    function fetchNewMessages() {
-        // 1. 获取当前页面显示的最后一条消息的 ID
-        const messages = document.querySelectorAll('[data-msg-id]');
-        let lastId = 0;
-        if (messages.length > 0) {
-            lastId = messages[messages.length - 1].getAttribute('data-msg-id');
-        }
+        const form = document.getElementById('chatForm');
+        const input = document.getElementById('msgInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatBox = document.getElementById('chatBox'); // 滚动区域
+        const container = document.getElementById('chatListContainer'); // 消息列表容器
+        const emptyPlaceholder = document.getElementById('emptyPlaceholder');
 
-        // 2. 发送请求给服务器
-        fetch(`{% url 'direct_messages:get_new_messages' target_user.id %}?last_id=${lastId}`)
-            .then(response => response.json())
+        // 1. 基础工具：滚动到底部
+        function scrollToBottom() {
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+        // 进页面先滚一次
+        scrollToBottom();
+
+        // 2. 核心功能：发送消息 (User A)
+        function handleSend() {
+            const content = input.value.trim();
+            if (!content) return;
+
+            const formData = new FormData();
+            formData.append('content', content);
+            // 确保 CSRF Token 存在
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            // ✨ 体验优化：立即清空输入框并保持聚焦
+            input.value = '';
+            input.style.height = ''; 
+            input.focus();
+
+            fetch("{% url 'direct_messages:chat_room' target_user.id %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest' // 👈 关键：告诉 Django 不要重定向
+                }
+            })
+            .then(response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") === -1) {
+                    throw new Error("SESSION_EXPIRED");
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.messages.length > 0) {
-                    // 3. 如果有新消息，清除"暂无消息"占位符
-                    const emptyPlaceholder = document.getElementById('emptyPlaceholder');
-                    if (emptyPlaceholder) {
-                        emptyPlaceholder.remove();
+                if (data.status === 'ok') {
+                    if (emptyPlaceholder) emptyPlaceholder.remove();
+
+                    // 构造我的头像
+                    let avatarHtml = '';
+                    if (currentUserAvatar) {
+                        avatarHtml = `<img src="${currentUserAvatar}" class="chat-avatar">`;
+                    } else {
+                        avatarHtml = `<div class="chat-avatar bg-primary text-white d-flex align-items-center justify-content-center fw-bold">${currentUserChar}</div>`;
                     }
 
-                    const container = document.getElementById('chatListContainer');
-
-                    // 4. 循环插入每一条新消息
-                    data.messages.forEach(msg => {
-                        let avatarHtml = '';
-                        if (msg.avatar_url) {
-                            avatarHtml = `<img src="${msg.avatar_url}" class="chat-avatar">`;
-                        } else {
-                            avatarHtml = `<div class="chat-avatar bg-secondary text-white d-flex align-items-center justify-content-center fw-bold">${msg.username_char}</div>`;
-                        }
-
-                        // 构建 HTML (对方发的消息在左侧)
-                        const msgHtml = `
-                            <div class="d-flex justify-content-start align-items-start mb-3 animate__animated animate__fadeInLeft animate__faster" data-msg-id="${msg.id}">
-                                <div class="me-2">
-                                    ${avatarHtml}
-                                </div>
-                                <div class="chat-bubble chat-bubble-other">
-                                    <div class="text-break" style="white-space: pre-wrap;">${msg.content}</div>
-                                    <span class="chat-time text-muted">${msg.timestamp}</span>
-                                </div>
+                    // 构造消息 HTML
+                    const msgHtml = `
+                        <div class="d-flex justify-content-end align-items-start mb-3 animate__animated animate__fadeInUp animate__faster" data-msg-id="${data.id}">
+                            <div class="chat-bubble chat-bubble-me">
+                                <div class="text-break" style="white-space: pre-wrap;">${data.content}</div>
+                                <span class="chat-time text-white-50">刚刚</span>
                             </div>
-                        `;
-
-                        container.insertAdjacentHTML('beforeend', msgHtml);
-                    });
-
-                    // 5. 收到新消息后，滚动到底部
+                            <div class="ms-2">${avatarHtml}</div>
+                        </div>
+                    `;
+                    
+                    // 使用临时容器避免破坏事件绑定
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = msgHtml;
+                    container.appendChild(tempDiv.firstElementChild);
                     scrollToBottom();
                 }
             })
-            .catch(e => console.error("轮询出错:", e));
-    }
-
-    // ⏳ 每 2000 毫秒 (2秒) 检查一次新消息
-    setInterval(fetchNewMessages, 2000);
-
-    // 页面加载完成后滚动到底部
-    scrollToBottom();
-
-    // 获取DOM元素
-    const form = document.getElementById('chatForm');
-    const input = document.getElementById('msgInput');
-    const container = document.getElementById('chatListContainer');
-    const emptyPlaceholder = document.getElementById('emptyPlaceholder');
-    const sendBtn = document.getElementById('sendBtn');
-
-    if (!form || !input || !container || !sendBtn) {
-        console.error('聊天室DOM元素未找到');
-        return;
-    }
-
-    // 发送消息函数
-    function submitMessage() {
-        const content = input.value;
-        if (!content.trim()) return;
-
-        const formData = new FormData(form);
-
-        fetch("{% url 'direct_messages:chat_room' target_user.id %}", {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                if (emptyPlaceholder && document.body.contains(emptyPlaceholder)) {
-                    emptyPlaceholder.remove();
+            .catch(error => {
+                console.error('发送失败:', error);
+                if (error.message === 'SESSION_EXPIRED') {
+                    alert("登录已过期，请刷新页面重新登录");
+                    window.location.reload();
                 }
+            });
+        }
 
-                // 获取头像 URL
-                let avatarHtml = '';
-                if (data.avatar_url) {
-                    avatarHtml = `<img src="${data.avatar_url}" class="chat-avatar">`;
-                } else {
-                    const initial = data.username_char || 'U';
-                    avatarHtml = `<div class="chat-avatar bg-primary text-white d-flex align-items-center justify-content-center fw-bold">${initial}</div>`;
+        // 3. 绑定事件 (解决刷新和失焦问题)
+        
+        // 点击按钮发送
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function(e) {
+                e.preventDefault(); 
+                handleSend();
+            });
+        }
+
+        // 回车发送
+        if (input) {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // 阻止换行，阻止提交
+                    handleSend();
                 }
+            });
+        }
 
-                // 我发的消息 (插入到右侧)
-                const msgHtml = `
-                    <div class="d-flex justify-content-end align-items-start mb-3 animate__animated animate__fadeInUp animate__faster" data-msg-id="${data.id}">
-                        <div class="chat-bubble chat-bubble-me">
-                            <div class="text-break" style="white-space: pre-wrap;">${data.content}</div>
-                            <span class="chat-time text-white-50">${data.timestamp}</span>
-                        </div>
-                        <div class="ms-2">
-                            ${avatarHtml}
-                        </div>
-                    </div>
-                `;
-
-                container.insertAdjacentHTML('beforeend', msgHtml);
-
-                // 清空输入框并保持焦点
-                input.value = '';
-                input.style.height = '';
-                input.focus();  // 保持光标在输入框中
-                scrollToBottom();
+        // 4. 核心功能：轮询接收消息 (User B)
+        function pollNewMessages() {
+            const allMessages = document.querySelectorAll('[data-msg-id]');
+            let lastId = 0;
+            if (allMessages.length > 0) {
+                lastId = allMessages[allMessages.length - 1].getAttribute('data-msg-id');
             }
-        })
-        .catch(error => {
-            console.error('发送消息失败:', error);
-        });
-    }
 
-    // 处理回车发送 (Shift+Enter 换行，Enter 发送)
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            submitMessage();
+            fetch(`{% url 'direct_messages:get_new_messages' target_user.id %}?last_id=${lastId}`)
+                .then(response => {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        return null; 
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.messages && data.messages.length > 0) {
+                        if (emptyPlaceholder) emptyPlaceholder.remove();
+
+                        data.messages.forEach(msg => {
+                            let avatarHtml = '';
+                            if (msg.avatar_url) {
+                                avatarHtml = `<img src="${msg.avatar_url}" class="chat-avatar">`;
+                            } else {
+                                avatarHtml = `<div class="chat-avatar bg-secondary text-white d-flex align-items-center justify-content-center fw-bold">${msg.username_char}</div>`;
+                            }
+
+                            const msgHtml = `
+                                <div class="d-flex justify-content-start align-items-start mb-3 animate__animated animate__fadeInLeft animate__faster" data-msg-id="${msg.id}">
+                                    <div class="me-2">${avatarHtml}</div>
+                                    <div class="chat-bubble chat-bubble-other">
+                                        <div class="text-break" style="white-space: pre-wrap;">${msg.content}</div>
+                                        <span class="chat-time text-muted">${msg.timestamp}</span>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = msgHtml;
+                            container.appendChild(tempDiv.firstElementChild);
+                        });
+                        
+                        scrollToBottom();
+                    }
+                })
+                .catch(e => {
+                    // 轮询错误忽略
+                });
+        }
+
+        // 启动轮询
+        setInterval(pollNewMessages, 2000);
+
+        // 5. Vditor 渲染 (放在最后，即使报错也不影响聊天)
+        try {
+            const scriptData = document.getElementById('post-content-data');
+            if (scriptData && typeof Vditor !== 'undefined') {
+                const markdownText = JSON.parse(scriptData.textContent);
+                const previewEl = document.getElementById('markdown-preview');
+                if (previewEl) {
+                    Vditor.preview(previewEl, markdownText, {
+                        mode: 'light',
+                        anchor: 1,
+                    });
+                }
+            }
+        } catch (e) {
+            console.log("Markdown 渲染跳过");
         }
     });
-
-    // 点击发送按钮
-    sendBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        submitMessage();
-    });
-
-    // 表单提交事件（阻止默认行为）
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        submitMessage();
-    });
-});
 </script>
-
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
