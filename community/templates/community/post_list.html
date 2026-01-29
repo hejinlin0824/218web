@@ -45,7 +45,7 @@
                             {{ post.title }}
                         </a>
                     </h5>
-                    <small class="text-muted">{{ post.created_at|timesince }}前</small>
+                    <small class="text-muted">{{ post.created_at|smart_time }}</small>
                 </div>
 
                 <div class="mb-2 position-relative" style="z-index: 2;">

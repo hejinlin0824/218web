@@ -160,7 +160,7 @@
                                         <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold me-1 text-decoration-none text-dark">
                                             {{ comment.author.nickname|default:comment.author.username }}
                                         </a>
-                                        <small class="text-muted">{{ comment.created_at|timesince }}前</small>
+                                        <small class="text-muted">{{ comment.created_at|smart_time }}</small>
                                     </div>
                                 </div>
                                 
@@ -205,7 +205,7 @@
                                             <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold small text-primary text-decoration-none">
                                                 @{{ comment.author.nickname|default:comment.author.username }}
                                             </a>
-                                            <span class="text-muted small ms-2">{{ reply.created_at|timesince }}前</span>
+                                            <span class="text-muted small ms-2">{{ reply.created_at|smart_time }}</span>
                                             
                                             <p class="mb-0 small text-secondary mt-1 text-break">{{ reply.content }}</p>
                                             

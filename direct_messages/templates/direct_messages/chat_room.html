@@ -12,6 +12,248 @@
         background-color: #f5f5f5;
     }
 
+    /* 聊天卡片布局 */
+    .chat-card {
+        height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-card .card-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        max-height: calc(100vh - 250px);
+    }
+
+    .chat-card .card-footer {
+        flex-shrink: 0;
+    }
+
+    /* 通用气泡样式 */
+    .chat-bubble {
+        padding: 12px 16px;
+        max-width: 75%;
+        position: relative;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* 我发的消息 (右侧) */
+    .chat-bubble-me {
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+        color: white;
+        border-radius: 12px 12px 2px 12px;
+        margin-left: 10px;
+    }
+
+    /* 对方发的消息 (左侧) */
+    .chat-bubble-other {
+        background-color: white;
+        color: #333;
+        border: 1px solid #e5e5e5;
+        border-radius: 2px 12px 12px 12px;
+        margin-right: 10px;
+    }
+
+    /* 时间戳样式 */
+    .chat-time {
+        display: block;
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.7;
+        text-align: right;
+    }
+
+    /* 头像样式 */
+    .chat-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        object-fit: cover;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* 自定义滚动条 */
+    .chat-card .card-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* 移动端适配 */
+    @media (max-width: 768px) {
+        .chat-card {
+            height: calc(100vh - 60px) !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .chat-card .card-body {
+            max-height: calc(100vh - 180px) !important;
+            padding: 15px;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+
+        .chat-avatar {
+            width: 32px;
+            height: 32px;
+        }
+
+        .chat-time {
+            font-size: 0.65rem;
+        }
+
+        /* 卡片头部优化 */
+        .card-header {
+            padding: 10px 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-header h6 {
+            font-size: 0.95rem;
+        }
+
+        .card-header .btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        /* 底部输入框区域 */
+        .card-footer {
+            padding: 10px 15px;
+            border-top: 1px solid #e5e5e5;
+            position: sticky;
+            bottom: 0;
+            background: white;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+        }
+
+        #msgInput {
+            font-size: 16px; /* 防止iOS自动缩放 */
+            padding: 12px 15px;
+            border-radius: 20px;
+        }
+
+        #sendBtn {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+        }
+
+        #sendBtn span {
+            font-size: 1.1rem;
+        }
+
+        /* 隐藏滚动条（移动端） */
+        .chat-card .card-body::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chat-card .card-body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    }
+
+    /* 触摸设备优化 */
+    @media (pointer: coarse) {
+        .chat-bubble {
+            padding: 14px 18px;
+        }
+
+        .chat-card .card-body {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .card-header .btn,
+        .card-footer button {
+            touch-action: manipulation;
+        }
+    }
+
+    /* 小屏手机（iPhone SE等）优化 */
+    @media (max-width: 375px) {
+        .chat-card .card-body {
+            padding: 10px;
+        }
+
+        .chat-bubble {
+            max-width: 90%;
+            padding: 8px 10px;
+            font-size: 0.85rem;
+        }
+
+        .chat-avatar {
+            width: 28px;
+            height: 28px;
+        }
+
+        .card-header h6 {
+            font-size: 0.85rem;
+        }
+    }
+
+    /* 键盘弹出时优化 */
+    @media (max-height: 500px) {
+        .chat-card {
+            height: 100vh !important;
+        }
+
+        .chat-card .card-body {
+            max-height: calc(100vh - 160px) !important;
+        }
+    }
+</style>
+<style>
+    /* === 聊天气泡核心样式 === */
+    .chat-container {
+        background-color: #f5f5f5;
+    }
+
+    /* 聊天卡片布局 */
+    .chat-card {
+        height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-card .card-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        max-height: calc(100vh - 250px);
+    }
+
+    .chat-card .card-footer {
+        flex-shrink: 0;
+    }
+
     /* 通用气泡样式 */
     .chat-bubble {
         padding: 10px 14px;
@@ -60,10 +302,13 @@
 
     /* 移动端适配 */
     @media (max-width: 768px) {
-        .card {
-            height: calc(100vh - 80px) !important;
+        .chat-card {
+            height: calc(100vh - 120px) !important;
             border: none !important;
             border-radius: 0 !important;
+        }
+        .chat-card .card-body {
+            max-height: calc(100vh - 200px) !important;
         }
         .card-body {
             padding: 10px;
@@ -77,21 +322,45 @@
         }
         .card-footer {
             padding: 8px;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
         }
-        #chatBox {
-            padding-bottom: 70px;
+    }
+        .card-body {
+            padding: 10px;
         }
+        .chat-bubble {
+            max-width: 85%;
+        }
+        .btn-light {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+    .card-footer {
+        flex-shrink: 0;
+    }
+
+    /* 自定义滚动条 */
+    .chat-card .card-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .chat-card .card-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
 </style>
 
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card shadow-sm border-0" style="height: 80vh;">
+        <div class="card shadow-sm border-0 chat-card">
             
             <div class="card-header bg-white py-3 border-bottom d-flex align-items-center">
                 <a href="{% url 'direct_messages:inbox' %}" class="btn btn-sm btn-light me-3 text-secondary">
@@ -105,7 +374,7 @@
                 </a>
             </div>
 
-            <div class="card-body overflow-auto chat-container" id="chatBox">
+            <div class="card-body chat-container" id="chatBox">
                 <div class="d-flex flex-column gap-3" id="chatListContainer">
                     {% for msg in messages %}
                         {% if msg.sender == user %}
@@ -152,13 +421,13 @@
             <div class="card-footer bg-white py-3 border-top">
                 <form method="post" id="chatForm" class="d-flex gap-2 align-items-end">
                     {% csrf_token %}
-                    <textarea name="content" id="msgInput" class="form-control bg-light border-0" rows="1" 
-                              placeholder="发消息..." required 
-                              style="resize: none; border-radius: 20px; padding: 10px 15px; max-height: 100px;" 
+                    <textarea name="content" id="msgInput" class="form-control bg-light border-0" rows="1"
+                              placeholder="发消息..." required
+                              style="resize: none; border-radius: 20px; padding: 10px 15px; max-height: 100px; font-size: 16px;"
                               oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                    
-                    <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
-                            id="sendBtn" style="width: 40px; height: 40px; min-width: 40px;">
+
+                    <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                            id="sendBtn" style="width: 44px; height: 44px; min-width: 44px; touch-action: manipulation;">
                         <span style="font-size: 1.2rem; margin-top: -2px;">➤</span>
                     </button>
                 </form>

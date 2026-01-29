@@ -19,7 +19,7 @@
                     <div class="d-flex align-items-start">
                         <div class="me-3">
                             {% if notice.actor.avatar %}
-                                <img src="{{ notice.actor.avatar.url }}" class="rounded-circle border" width="40" height="40" style="object-fit: cover;">
+                                <img src="{{ notice.actor.avatar.url }}" class="rounded-circle border" width="40" height="40" style="object-fit: cover; aspect-ratio: 1/1;">
                             {% else %}
                                 <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
                                     {{ notice.actor.username.0|upper }}
