@@ -15,6 +15,9 @@ celery -A myweb worker -l info
 
 # 终端3：启动Celery Beat（定时任务调度器）
 celery -A myweb beat -l info
+
+#或者一步启动：
+honcho start
 ```
 
 ### 运行测试
@@ -30,7 +33,7 @@ python manage.py test tasks
 python manage.py test direct_messages
 python manage.py test notifications
 
-# 运行单个测试（完整路径）
+# 运行单个测试（完整路径）🔥 重要
 python manage.py test user_app.tests.YourTestCase.test_method_name
 
 # 详细输出模式
@@ -291,6 +294,43 @@ function updateTimer() {
     timer.innerHTML = `${days}天 ${hours}时 ${minutes}分 ${seconds}秒`;
 }
 setInterval(updateTimer, 1000);
+```
+
+### AJAX 实时通信
+```javascript
+// 发送消息（AJAX）
+fetch(`/messages/chat/${activeUserId}/`, {
+    method: 'POST',
+    body: formData,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+})
+.then(response => response.json())
+.then(data => {
+    if (data.status === 'ok') {
+        // 处理成功响应
+        addMessage(data);
+    }
+});
+
+// 轮询接收新消息
+function pollNewMessages() {
+    const allMessages = document.querySelectorAll('[data-msg-id]');
+    let lastId = 0;
+    if (allMessages.length > 0) {
+        lastId = allMessages[allMessages.length - 1].getAttribute('data-msg-id');
+    }
+
+    fetch(`/messages/api/get-new/${activeUserId}/?last_id=${lastId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.messages && data.messages.length > 0) {
+                data.messages.forEach(msg => addMessage(msg));
+            }
+        });
+}
+
+// 启动轮询（每2秒一次）
+setInterval(pollNewMessages, 2000);
 ```
 
 ## ⚙️ 配置说明

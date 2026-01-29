@@ -2,7 +2,7 @@
 
 ## 📋 项目简介
 
-这是一个基于 Django 6.0.1 开发的实验室综合管理系统，包含用户管理、社区论坛、任务悬赏、私信通知、学术展示等功能。
+这是一个基于 Django 6.0.1 开发的实验室综合管理系统，包含用户管理、社区论坛、任务悬赏、实时私信、通知系统、学术展示等功能。
 
 **技术栈：**
 - Django 6.0.1 (Web框架)
@@ -11,6 +11,16 @@
 - SQLite3 (开发数据库)
 - Bootstrap 5 (前端框架)
 - Vditor (Markdown编辑器)
+- **AJAX + 轮询 (实时通信)** ✨
+
+**核心功能：**
+- 📱 用户管理（注册、登录、个人资料、好友系统）
+- 💬 实时私信（双向实时聊天、临时会话）
+- 📝 社区论坛（帖子发布、评论回复、点赞、Markdown）
+- 🎯 任务悬赏（发布任务、参与竞标、任务结算、奖励系统）
+- 🔔 通知系统（站内通知、邮件提醒、未读统计）
+- 🔍 全文检索（基于Whoosh的快速搜索）
+- 📊 数据统计（用户活跃度、社区数据、任务统计）
 
 ## 🚀 快速启动
 
@@ -477,7 +487,7 @@ tasks/
 
 ### 4. direct_messages（私信系统）
 
-**功能模块：收件箱、聊天室、临时会话、私信提醒**
+**功能模块：收件箱、实时聊天、临时会话、私信提醒**
 
 #### 文件结构
 ```
@@ -501,21 +511,28 @@ direct_messages/
 
 #### views.py - 视图函数详解
 
-**1. inbox（收件箱）**
-- 功能：显示消息收件箱
+**1. inbox（收件箱）** ✨ 实时通信
+- 功能：显示消息收件箱，支持实时双向聊天
 - 分为两部分：
   - 我的好友：显示已添加的好友
   - 临时会话：显示有过消息往来但不是好友的用户
+- 实时功能：
+  - AJAX发送消息（不刷新页面）
+  - 每2秒轮询接收新消息
+  - 自动滚动到最新消息
+  - 支持回车快捷发送
 - 显示最后一条消息
-- 实时轮询更新消息
 - 响应式设计：移动端只显示一个区域（联系人列表或聊天区域）
 - 模板：`inbox.html`
 
-**2. chat_room（聊天室）**
-- 功能：单对一聊天界面
-- 支持AJAX实时发送消息
-- 自动轮询新消息（2秒一次）
-- 实时滚动到底部
+**2. chat_room（聊天室）** ✨ 实时通信
+- 功能：单对一聊天界面，支持实时双向聊天
+- 实时功能：
+  - AJAX发送消息（不刷新页面）
+  - 每2秒轮询接收新消息
+  - 自动滚动到最新消息
+  - 消息动画效果
+  - 支持回车快捷发送
 - 阻止全局消息弹窗
 - 响应式设计：
   - 固定高度：`calc(100vh - 60px)`（移动端）
@@ -537,10 +554,18 @@ direct_messages/
 - 发送站内通知
 - 通知跳转到Inbox页面并选中发送者
 
-**6. get_new_messages（获取新消息）**
+**6. get_new_messages（获取新消息API）** ✨ 实时通信
 - 功能：AJAX API，获取指定发送者的新消息
 - 参数：last_id（当前页面最后一条消息ID）
 - 返回：JSON格式的新消息列表
+- 轮询间隔：2秒
+
+#### 实时通信技术栈
+- **前端**：原生 JavaScript + Fetch API
+- **后端**：Django REST API（返回JSON）
+- **轮询机制**：setInterval 每2秒调用一次
+- **不刷新页面**：AJAX POST 发送消息
+- **消息追踪**：使用 `data-msg-id` 属性追踪消息
 
 #### tasks.py - 异步任务
 
@@ -827,6 +852,7 @@ app.conf.beat_schedule = {
 - Bootstrap Icons（图标）
 - Vditor（Markdown编辑器）
 - Animate.css（动画）
+- **原生 JavaScript (实时通信)** ✨
 
 ### 响应式设计
 - 移动优先设计
@@ -836,8 +862,10 @@ app.conf.beat_schedule = {
 ### 自定义功能
 - 动态倒计时（实时更新）
 - 智能时间显示
-- 实时轮询更新（通知、私信）
+- **实时轮询更新（通知、私信）** ✨
 - 消息滚动到底部
+- **AJAX 请求（不刷新页面）** ✨
+- 消息动画效果
 
 ## 📝 常用命令
 
@@ -862,6 +890,10 @@ python manage.py rebuild_index
 
 # 运行测试
 python manage.py test
+python manage.py test user_app  # 运行指定应用测试
+python manage.py test user_app.tests.YourTestCase.test_method_name  # 🔥 运行单个测试
+python manage.py test --verbosity=2  # 详细输出
+python manage.py test --debug-mode  # 调试模式
 ```
 
 ### Celery命令
@@ -953,6 +985,10 @@ celery -A myweb worker -B -l info
 4. 分页显示列表数据
 5. 压缩静态文件
 6. 使用CDN加速静态资源
+7. **实时通信优化**：
+   - 考虑升级到 WebSocket（降低延迟）
+   - 减少轮询频率或使用长轮询
+   - 客户端消息缓存
 
 ## 🐛 常见问题
 
@@ -981,6 +1017,19 @@ celery -A myweb worker -B -l info
 2. 检查@media断点是否正确
 3. 使用Chrome DevTools移动端模拟调试
 
+### 问题5：实时聊天消息不更新
+**解决方案：**
+1. 检查浏览器控制台是否有JavaScript错误
+2. 确认 `/messages/api/get-new/` API 是否返回正确数据
+3. 检查 `activeUserId` 是否正确获取
+4. 确认轮询函数 `setInterval(pollNewMessages, 2000)` 是否运行
+
+### 问题6：发送消息后页面刷新
+**解决方案：**
+1. 检查 AJAX 请求的 `X-Requested-With: XMLHttpRequest` 头是否正确
+2. 确认表单 `onsubmit="return false;"` 是否设置
+3. 检查后端是否返回 JSON 而非 HTML
+
 ## 📄 License
 
 MIT License
@@ -993,3 +1042,4 @@ MIT License
 
 **维护者：DSSG Lab Team**
 **更新日期：2026-01-29**
+**最新更新：实时私信通信功能（AJAX + 轮询）** ✨
