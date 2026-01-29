@@ -1,0 +1,574 @@
+{% extends 'base.html' %}
+
+{% block title %}NPY Editor V23.7 - Pro Web{% endblock %}
+
+{# 🔥 覆盖 sidebar 为空 #}
+{% block sidebar %}{% endblock %}
+
+{% block content_container %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+    /* 基础样式 */
+    .noselect { user-select: none; -webkit-user-select: none; }
+    .col-12 { width: 100% !important; flex: 0 0 100%; max-width: 100%; }
+    .custom-scroll { overflow-y: auto; max-height: calc(100vh - 120px); }
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    .form-label-sm { font-size: 0.8rem; font-weight: bold; color: #555; margin-bottom: 2px; }
+    .card-header { font-size: 0.9rem; font-weight: bold; letter-spacing: 0.5px; }
+    
+    /* 锁定状态的高亮 */
+    .locked-bg { background-color: #fff3cd !important; border-color: #ffecb5 !important; }
+</style>
+
+<div class="container-fluid px-4 py-2 noselect">
+    
+    <div class="d-flex justify-content-between align-items-center mb-2 bg-white p-2 rounded shadow-sm border-top border-4 border-primary">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 fw-bold text-primary">📈 NPY 数据工坊 <span class="badge bg-dark text-white" style="font-size:0.6rem;">V23.7</span></h5>
+            <span class="text-muted border-start ps-3 small" id="file-status">等待加载...</span>
+        </div>
+        <div class="d-flex gap-2">
+            <input type="file" id="mainFile" accept=".npy" class="d-none" onchange="uploadFile('main')">
+            <button class="btn btn-sm btn-primary" onclick="document.getElementById('mainFile').click()">📂 加载主文件</button>
+            <input type="file" id="fusionFile" accept=".npy" class="d-none" onchange="uploadFile('fusion')">
+            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('fusionFile').click()" id="btnFusion" disabled>➕ 融合</button>
+            <button class="btn btn-sm btn-success" onclick="exportPlot()">📷 导出</button>
+            <a href="{% url 'home' %}" class="btn btn-sm btn-light">退出</a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-3 col-lg-2 custom-scroll">
+            
+            <div class="card shadow-sm mb-2 border-primary" id="curveManagerCard">
+                <div class="card-header bg-primary text-white py-2 d-flex justify-content-between">
+                    <span>1. 曲线管理</span>
+                    <span id="lockStatusIcon">🔓</span>
+                </div>
+                <div class="card-body p-2">
+                    <label class="form-label-sm">当前操作对象 (Active)</label>
+                    <select id="activeCurveSelect" class="form-select form-select-sm mb-2 fw-bold" onchange="onActiveCurveChange()">
+                        <option value="-1">等待数据...</option>
+                    </select>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-danger flex-grow-1" id="btnLock" onclick="toggleLock()">
+                            🔓 点击锁定
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">
+                        * 锁定后无法拖拽或批量修改
+                    </small>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-2">
+                <div class="card-header bg-light py-2">2. 轴配置 & 命名</div>
+                <div class="card-body p-2">
+                    <div class="row g-1 mb-2">
+                        <div class="col-6">
+                            <label class="form-label-sm">X 数据源</label>
+                            <select id="xSelect" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label-sm">Y 数据源</label>
+                            <select id="ySelect" class="form-select form-select-sm"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <input type="text" class="form-control form-control-sm mb-1" id="xAxisLabel" placeholder="自定义 X 轴名称" onchange="updateLayout()">
+                        <input type="text" class="form-control form-control-sm" id="yAxisLabel" placeholder="自定义 Y 轴名称" onchange="updateLayout()">
+                    </div>
+
+                    <button class="btn btn-sm btn-dark w-100" onclick="loadChart()">🔄 刷新图表数据</button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-2">
+                <div class="card-header bg-warning bg-opacity-25 py-2 text-dark">3. 交互编辑</div>
+                <div class="card-body p-2">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="editModeSwitch">
+                        <label class="form-check-label small fw-bold" for="editModeSwitch">🖱️ 启用鼠标拖拽</label>
+                    </div>
+                    
+                    <hr class="my-2">
+                    <label class="form-label-sm">批量操作 (针对当前对象)</label>
+                    <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="btnToggleRegion" onclick="toggleLinearRegion()">
+                        🔲 开启范围选择
+                    </button>
+                    <div class="input-group input-group-sm mb-1">
+                        <button class="btn btn-danger" onclick="applyBatch(-1)">⬇</button>
+                        <input type="number" class="form-control text-center" id="batchShiftVal" value="1.0" step="0.1">
+                        <button class="btn btn-success" onclick="applyBatch(1)">⬆</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-2">
+                <div class="card-header bg-info bg-opacity-10 py-2 text-dark">4. 样式工坊</div>
+                <div class="card-body p-2">
+                    <input type="text" class="form-control form-control-sm mb-2" id="chartTitle" placeholder="图表标题" onchange="updateLayout()">
+
+                    <select class="form-select form-select-sm mb-2" id="colorPreset" onchange="applyPreset()">
+                        <option value="default">配色: 经典</option>
+                        <option value="macaron">配色: 马卡龙</option>
+                        <option value="morandi">配色: 莫兰蒂</option>
+                        <option value="cyber">配色: 赛博朋克</option>
+                    </select>
+
+                    <label class="form-label-sm">当前曲线定制</label>
+                    <div class="d-flex gap-1 mb-2">
+                        <input type="color" class="form-control form-control-color form-control-sm" id="traceColor" onchange="updateTraceStyle()">
+                        <input type="number" class="form-control form-control-sm" id="traceWidth" value="2" min="1" max="10" title="线宽" onchange="updateTraceStyle()">
+                    </div>
+                    
+                    <div class="accordion accordion-flush" id="styleAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-1 small" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne">
+                                    网格与图例设置
+                                </button>
+                            </h2>
+                            <div id="flush-collapseOne" class="accordion-collapse collapse">
+                                <div class="accordion-body p-1 pt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showGrid" checked onchange="updateLayout()">
+                                        <label class="form-check-label small">显示网格</label>
+                                    </div>
+                                    
+                                    <hr class="my-2">
+                                    
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="showLegend" checked onchange="updateLayout()">
+                                        <label class="form-check-label small fw-bold">显示图例</label>
+                                    </div>
+                                    
+                                    <div class="d-flex align-items-center mb-2">
+                                        <label class="small me-2 text-muted" style="width: 30px;">大小</label>
+                                        <input type="number" class="form-control form-control-sm" id="legendFontSize" value="12" min="8" max="24" onchange="updateLayout()">
+                                    </div>
+
+                                    <label class="form-label-sm text-muted">位置 (0~1)</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">X</span>
+                                        <input type="number" class="form-control" id="legX" value="0.01" step="0.1" onchange="updateLayout()">
+                                        <span class="input-group-text">Y</span>
+                                        <input type="number" class="form-control" id="legY" value="0.99" step="0.1" onchange="updateLayout()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-sm btn-outline-dark w-100 mt-2" onclick="openLegendEditor()">📝 重命名曲线</button>
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="col-md-9 col-lg-10">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-0 position-relative">
+                    <div id="plotDiv" style="width:100%; height: 88vh;"></div>
+                    <div id="dragMask" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; cursor: ns-resize; z-index: 9999;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="legendModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title">重命名曲线</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="legendForm"></form>
+            </div>
+            <div class="modal-footer py-1">
+                <button type="button" class="btn btn-primary btn-sm w-100" onclick="saveLegendNames()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === 全局状态 ===
+    let gd = document.getElementById('plotDiv');
+    let currentTraces = [];
+    let isDragging = false;
+    let dragState = { curveIdx: -1, pointIdx: -1, offsetY: 0, yaxis: null };
+    let regionActive = false;
+    
+    // 曲线锁定状态 (Index -> Boolean)
+    let lockedTraces = {}; 
+    let activeTraceIndex = 0; 
+
+    // 配色方案
+    const PALETTES = {
+        'default': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'],
+        'macaron': ['#FFADAD', '#FFD6A5', '#FDFFB6', '#CAFFBF', '#9BF6FF', '#A0C4FF', '#BDB2FF', '#FFC6FF'],
+        'morandi': ['#7A7281', '#A2999E', '#848C90', '#C4B7B0', '#959685', '#E2DACE'],
+        'cyber': ['#00f3ff', '#bc13fe', '#ff00ff', '#120052', '#00ff9f']
+    };
+
+    // 初始化 Plotly
+    const layout = {
+        title: { text: 'NPY 数据工坊', font: { family: 'Microsoft YaHei', size: 20 } },
+        font: { family: 'Times New Roman', size: 14 },
+        xaxis: { title: 'Index', gridcolor: '#eee', zeroline: false },
+        yaxis: { title: 'Value', gridcolor: '#eee', zeroline: false },
+        hovermode: 'closest',
+        dragmode: 'zoom',
+        showlegend: true,
+        // 初始图例字体大小
+        legend: { x: 0.01, y: 0.99, bgcolor: 'rgba(255,255,255,0.8)', font: { size: 12 } },
+        shapes: []
+    };
+    const config = { responsive: true, displayModeBar: true, edits: { shapePosition: true } };
+    Plotly.newPlot(gd, [], layout, config);
+
+    // ==========================================
+    // 1. 曲线管理与锁定逻辑
+    // ==========================================
+
+    function updateCurveSelector() {
+        const sel = document.getElementById('activeCurveSelect');
+        sel.innerHTML = '';
+        currentTraces.forEach((t, i) => {
+            let name = t.name || `Trace ${i}`;
+            let lockMark = lockedTraces[i] ? '🔒 ' : '';
+            sel.innerHTML += `<option value="${i}">${lockMark}${name}</option>`;
+        });
+        sel.value = activeTraceIndex;
+        updateLockUI(); 
+    }
+
+    function onActiveCurveChange() {
+        activeTraceIndex = parseInt(document.getElementById('activeCurveSelect').value);
+        updateLockUI();
+        const trace = currentTraces[activeTraceIndex];
+        if(trace && trace.line) {
+            document.getElementById('traceColor').value = trace.line.color;
+            document.getElementById('traceWidth').value = trace.line.width;
+        }
+    }
+
+    function toggleLock() {
+        lockedTraces[activeTraceIndex] = !lockedTraces[activeTraceIndex];
+        updateLockUI();
+        updateCurveSelector();
+    }
+
+    function updateLockUI() {
+        const isLocked = !!lockedTraces[activeTraceIndex];
+        const btn = document.getElementById('btnLock');
+        const icon = document.getElementById('lockStatusIcon');
+        const card = document.getElementById('curveManagerCard');
+        
+        if (isLocked) {
+            btn.classList.replace('btn-outline-danger', 'btn-danger');
+            btn.innerHTML = '🔒 已锁定 (点击解锁)';
+            icon.innerText = '🔒';
+            card.classList.add('locked-bg');
+        } else {
+            btn.classList.replace('btn-danger', 'btn-outline-danger');
+            btn.innerText = '🔓 点击锁定';
+            icon.innerText = '🔓';
+            card.classList.remove('locked-bg');
+        }
+    }
+
+    // ==========================================
+    // 2. 交互逻辑 (拖拽 + 偏移修复)
+    // ==========================================
+    
+    gd.on('plotly_click', function(data){
+        if (!document.getElementById('editModeSwitch').checked) return;
+        
+        const pt = data.points[0];
+        const clickedIdx = pt.curveNumber;
+
+        // 智能切换 Active Curve
+        if (clickedIdx !== activeTraceIndex) {
+            activeTraceIndex = clickedIdx;
+            updateCurveSelector();
+        }
+
+        // 锁定检查
+        if (lockedTraces[activeTraceIndex]) {
+            alert(`曲线 "${currentTraces[activeTraceIndex].name}" 已锁定，无法修改！`);
+            return; 
+        }
+        
+        // 🔥 Offset 计算 (无跳变拖拽核心)
+        const yaxis = gd._fullLayout.yaxis;
+        const rect = gd.getBoundingClientRect();
+        // 计算鼠标点对应的 DataValue
+        const mouseDataY = yaxis.p2d(data.event.clientY - rect.top);
+        
+        isDragging = true;
+        dragState = {
+            curveIdx: clickedIdx,
+            pointIdx: pt.pointIndex,
+            // 记录真实数据点与鼠标点击位置的差值
+            offsetY: pt.y - mouseDataY,
+            yaxis: yaxis
+        };
+        
+        document.getElementById('dragMask').style.display = 'block';
+    });
+
+    document.getElementById('dragMask').addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        const rect = gd.getBoundingClientRect();
+        const currentMouseDataY = dragState.yaxis.p2d(e.clientY - rect.top);
+        
+        // 应用差值，保证跟手
+        const newDataY = currentMouseDataY + dragState.offsetY;
+
+        currentTraces[dragState.curveIdx].y[dragState.pointIdx] = newDataY;
+        
+        requestAnimationFrame(() => {
+            Plotly.restyle(gd, { y: [currentTraces[dragState.curveIdx].y] }, [dragState.curveIdx]);
+        });
+    });
+
+    document.getElementById('dragMask').addEventListener('mouseup', function(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        document.getElementById('dragMask').style.display = 'none';
+        const finalVal = currentTraces[dragState.curveIdx].y[dragState.pointIdx];
+        saveSinglePoint(dragState.curveIdx, dragState.pointIdx, finalVal);
+    });
+    
+    document.getElementById('editModeSwitch').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            Plotly.relayout(gd, { dragmode: false });
+            gd.style.cursor = 'pointer';
+        } else {
+            Plotly.relayout(gd, { dragmode: 'zoom' });
+            gd.style.cursor = 'default';
+        }
+    });
+
+    // ==========================================
+    // 3. 批量操作
+    // ==========================================
+
+    function toggleLinearRegion() {
+        regionActive = !regionActive;
+        const btn = document.getElementById('btnToggleRegion');
+        if (regionActive) {
+            btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+            btn.innerText = '🔲 关闭范围';
+            const xrange = gd.layout.xaxis.range || [0, 100];
+            const width = (xrange[1] - xrange[0]) / 5;
+            const center = (xrange[1] + xrange[0]) / 2;
+            const shape = {
+                type: 'rect', xref: 'x', yref: 'paper',
+                x0: center - width, x1: center + width,
+                y0: 0, y1: 1,
+                fillcolor: 'rgba(0, 123, 255, 0.2)',
+                line: {width: 0},
+                editable: true
+            };
+            Plotly.relayout(gd, { shapes: [shape] });
+        } else {
+            btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+            btn.innerText = '🔲 开启范围选择';
+            Plotly.relayout(gd, { shapes: [] });
+        }
+    }
+    
+    function applyBatch(direction) {
+        if (lockedTraces[activeTraceIndex]) {
+            alert(`当前曲线 "${currentTraces[activeTraceIndex].name}" 已锁定！`);
+            return;
+        }
+        if (!regionActive || !gd.layout.shapes || gd.layout.shapes.length === 0) {
+            alert("请先开启范围选择！"); return;
+        }
+        const shape = gd.layout.shapes[0];
+        const minX = Math.min(shape.x0, shape.x1);
+        const maxX = Math.max(shape.x0, shape.x1);
+        const shift = parseFloat(document.getElementById('batchShiftVal').value) * direction;
+        const yKey = document.getElementById('ySelect').value;
+        const xKey = document.getElementById('xSelect').value;
+
+        fetch("{% url 'npy_editor:update_data' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ 
+                mode: 'batch', 
+                trace_index: activeTraceIndex, 
+                min_x: minX, max_x: maxX, shift: shift, x_key: xKey, y_key: yKey 
+            })
+        }).then(r=>r.json()).then(d=>{
+            if(d.status==='ok') loadChart();
+            else alert(d.msg);
+        });
+    }
+
+    // ==========================================
+    // 4. 样式与布局 (Updated)
+    // ==========================================
+
+    function updateTraceStyle() {
+        const color = document.getElementById('traceColor').value;
+        const width = parseInt(document.getElementById('traceWidth').value);
+        if (currentTraces.length > 0) {
+            Plotly.restyle(gd, {
+                'line.color': color,
+                'line.width': width
+            }, [activeTraceIndex]);
+            if(!currentTraces[activeTraceIndex].line) currentTraces[activeTraceIndex].line = {};
+            currentTraces[activeTraceIndex].line.color = color;
+            currentTraces[activeTraceIndex].line.width = width;
+        }
+    }
+
+    function applyPreset() {
+        const preset = document.getElementById('colorPreset').value;
+        const colors = PALETTES[preset] || PALETTES['default'];
+        currentTraces.forEach((trace, i) => {
+            const color = colors[i % colors.length];
+            Plotly.restyle(gd, { 'line.color': color }, [i]);
+            if(!trace.line) trace.line = {}; trace.line.color = color;
+        });
+        if(currentTraces[activeTraceIndex]) {
+            document.getElementById('traceColor').value = currentTraces[activeTraceIndex].line.color;
+        }
+    }
+
+    function updateLayout() {
+        const title = document.getElementById('chartTitle').value;
+        const xLabel = document.getElementById('xAxisLabel').value;
+        const yLabel = document.getElementById('yAxisLabel').value;
+        const showGrid = document.getElementById('showGrid').checked;
+        const showLegend = document.getElementById('showLegend').checked;
+        const legFontSize = parseInt(document.getElementById('legendFontSize').value) || 12; // 🔥 获取字号
+        const lx = parseFloat(document.getElementById('legX').value);
+        const ly = parseFloat(document.getElementById('legY').value);
+
+        const newLayout = {
+            'title.text': title || 'NPY 数据工坊',
+            // 🔥 应用轴命名，如果为空则使用默认或不更新
+            'xaxis.title.text': xLabel || 'Index',
+            'yaxis.title.text': yLabel || 'Value',
+            'xaxis.showgrid': showGrid,
+            'yaxis.showgrid': showGrid,
+            showlegend: showLegend,
+            'legend.x': lx,
+            'legend.y': ly,
+            // 🔥 应用图例字号
+            'legend.font.size': legFontSize
+        };
+        
+        Plotly.relayout(gd, newLayout);
+    }
+    
+    // ==========================================
+    // 5. 数据 IO
+    // ==========================================
+    
+    function uploadFile(type) {
+        const inputId = type === 'main' ? 'mainFile' : 'fusionFile';
+        const fileInput = document.getElementById(inputId);
+        if (!fileInput.files.length) return;
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('type', type);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        fetch("{% url 'npy_editor:upload_file' %}", { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                if (type === 'main') {
+                    const xSel = document.getElementById('xSelect');
+                    const ySel = document.getElementById('ySelect');
+                    xSel.innerHTML = '<option value="Index">Index</option>';
+                    ySel.innerHTML = '';
+                    data.keys.forEach(k => {
+                        xSel.innerHTML += `<option value="${k}">${k}</option>`;
+                        ySel.innerHTML += `<option value="${k}">${k}</option>`;
+                    });
+                    if (data.keys.length > 1) ySel.selectedIndex = 1;
+                    document.getElementById('file-status').innerText = `✅ ${fileInput.files[0].name}`;
+                    document.getElementById('btnFusion').disabled = false;
+                    
+                    lockedTraces = {};
+                    activeTraceIndex = 0;
+                }
+                loadChart();
+            } else {
+                alert(data.msg);
+            }
+        });
+    }
+
+    function loadChart() {
+        const xKey = document.getElementById('xSelect').value;
+        const yKey = document.getElementById('ySelect').value;
+        fetch(`{% url 'npy_editor:get_data' %}?x_key=${xKey}&y_key=${yKey}`)
+        .then(r => r.json()).then(data => {
+            if (data.status === 'ok') {
+                currentTraces = data.traces;
+                // 初始化样式
+                currentTraces.forEach((t, i) => {
+                    t.line = { width: 2 };
+                    if (i > 0) t.line.dash = 'dash';
+                });
+                
+                applyPreset();
+                updateCurveSelector();
+                updateLayout(); // 应用已有布局设置
+                Plotly.react(gd, currentTraces, layout, config);
+            }
+        });
+    }
+
+    function saveSinglePoint(cIdx, pIdx, val) {
+        const yKey = document.getElementById('ySelect').value;
+        fetch("{% url 'npy_editor:update_data' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ mode: 'single', trace_index: cIdx, index: pIdx, value: val, y_key: yKey })
+        });
+    }
+    
+    function openLegendEditor() {
+        const form = document.getElementById('legendForm');
+        form.innerHTML = '';
+        currentTraces.forEach((trace, idx) => {
+            form.innerHTML += `
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text" style="color:${trace.line?.color||'black'}">●</span>
+                    <input type="text" class="form-control legend-input" data-idx="${idx}" value="${trace.name}">
+                </div>
+            `;
+        });
+        new bootstrap.Modal(document.getElementById('legendModal')).show();
+    }
+    
+    function saveLegendNames() {
+        document.querySelectorAll('.legend-input').forEach(input => {
+            const idx = input.dataset.idx;
+            Plotly.restyle(gd, { name: input.value }, [parseInt(idx)]);
+            currentTraces[idx].name = input.value;
+        });
+        bootstrap.Modal.getInstance(document.getElementById('legendModal')).hide();
+        updateCurveSelector();
+    }
+    
+    function exportPlot() {
+        Plotly.downloadImage(gd, {format: 'svg', width: 1200, height: 800, filename: 'npy_plot'});
+    }
+</script>
+{% endblock %}
