@@ -158,12 +158,12 @@
 
                     <div class="flex-grow-1 p-4 overflow-auto custom-scrollbar" id="chat-messages" style="max-height: calc(100vh - 350px);">
                         {% for msg in messages %}
-                            <div class="d-flex mb-3 {% if msg.sender == request.user %}justify-content-end{% endif %}">
+                            <div class="d-flex mb-3 {% if msg.sender == request.user %}justify-content-end{% endif %}" data-msg-id="{{ msg.id }}">
                                 {% if msg.sender != request.user %}
                                     {% if msg.sender.avatar %}
                                         <img src="{{ msg.sender.avatar.url }}" class="rounded-circle me-2 align-self-end" style="width: 30px; height: 30px;">
                                     {% else %}
-                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 align-self-end" 
+                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 align-self-end"
                                              style="width: 30px; height: 30px; font-size: 0.8rem;">
                                             {{ msg.sender.username.0|upper }}
                                         </div>
@@ -179,12 +179,12 @@
                     </div>
 
                     <div class="p-3 border-top">
-                        <form method="post" action="{% url 'direct_messages:send_message' %}">
+                        <form id="messageForm" onsubmit="return false;">
                             {% csrf_token %}
-                            <input type="hidden" name="recipient_id" value="{{ active_user.id }}">
+                            <input type="hidden" id="recipientId" value="{{ active_user.id }}">
                             <div class="input-group">
-                                <input type="text" name="content" class="form-control rounded-pill bg-light border-0" placeholder="发送消息..." required autocomplete="off" style="font-size: 16px;">
-                                <button class="btn btn-primary rounded-pill ms-2 px-4" type="submit" style="touch-action: manipulation;">发送</button>
+                                <input type="text" id="messageInput" class="form-control rounded-pill bg-light border-0" placeholder="发送消息..." required autocomplete="off" style="font-size: 16px;">
+                                <button id="sendBtn" class="btn btn-primary rounded-pill ms-2 px-4" type="button" style="touch-action: manipulation;">发送</button>
                             </div>
                         </form>
                     </div>
@@ -455,7 +455,154 @@
 </style>
 
 <script>
-    const chatBox = document.getElementById('chat-messages');
-    if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    document.addEventListener('DOMContentLoaded', function() {
+        const activeUserId = document.getElementById('recipientId')?.value;
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatMessages = document.getElementById('chat-messages');
+
+        if (activeUserId) {
+            const allMessages = document.querySelectorAll('[data-msg-id]');
+            let lastMsgId = 0;
+            if (allMessages.length > 0) {
+                lastMsgId = parseInt(allMessages[allMessages.length - 1].getAttribute('data-msg-id')) || 0;
+            }
+
+            function scrollToBottom() {
+                if (chatMessages) {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }
+
+            function sendMessage() {
+                const content = messageInput.value.trim();
+                if (!content || !activeUserId) return;
+
+                const formData = new FormData();
+                formData.append('content', content);
+                formData.append('recipient_id', activeUserId);
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                formData.append('csrfmiddlewaretoken', csrfToken);
+
+                messageInput.value = '';
+                messageInput.focus();
+
+                fetch(`/messages/chat/${activeUserId}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        addMessage({
+                            id: data.id,
+                            content: data.content,
+                            timestamp: data.timestamp,
+                            is_me: true,
+                            avatar_url: data.avatar_url,
+                            username_char: data.username_char
+                        });
+                    }
+                })
+                .catch(error => console.error('发送失败:', error));
+            }
+
+            function addMessage(msg) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `d-flex mb-3 ${msg.is_me ? 'justify-content-end' : ''}`;
+                msgDiv.setAttribute('data-msg-id', msg.id);
+
+                let avatarHtml = '';
+                if (msg.is_me) {
+                    if (msg.avatar_url) {
+                        avatarHtml = `<img src="${msg.avatar_url}" class="rounded-circle me-2 align-self-end" style="width: 30px; height: 30px;">`;
+                    } else {
+                        avatarHtml = `<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2 align-self-end" style="width: 30px; height: 30px; font-size: 0.8rem;">${msg.username_char}</div>`;
+                    }
+                } else {
+                    if (msg.avatar_url) {
+                        avatarHtml = `<img src="${msg.avatar_url}" class="rounded-circle me-2 align-self-end" style="width: 30px; height: 30px;">`;
+                    } else {
+                        avatarHtml = `<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 align-self-end" style="width: 30px; height: 30px; font-size: 0.8rem;">${msg.username_char}</div>`;
+                    }
+                }
+
+                if (msg.is_me) {
+                    msgDiv.innerHTML = `
+                        <div class="card border-0 shadow-sm bg-primary text-white" style="max-width: 70%; border-radius: 15px;">
+                            <div class="card-body py-2 px-3">
+                                <p class="mb-0">${msg.content}</p>
+                            </div>
+                        </div>
+                        ${avatarHtml}
+                    `;
+                } else {
+                    msgDiv.innerHTML = `
+                        ${avatarHtml}
+                        <div class="card border-0 shadow-sm bg-light" style="max-width: 70%; border-radius: 15px;">
+                            <div class="card-body py-2 px-3">
+                                <p class="mb-0">${msg.content}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                chatMessages.appendChild(msgDiv);
+                scrollToBottom();
+            }
+
+            function pollNewMessages() {
+                if (!activeUserId) return;
+
+                const allMessages = document.querySelectorAll('[data-msg-id]');
+                let lastId = 0;
+                if (allMessages.length > 0) {
+                    lastId = parseInt(allMessages[allMessages.length - 1].getAttribute('data-msg-id'));
+                }
+
+                fetch(`/messages/api/get-new/${activeUserId}/?last_id=${lastId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            return null;
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data && data.messages && data.messages.length > 0) {
+                            data.messages.forEach(msg => {
+                                addMessage({
+                                    id: msg.id,
+                                    content: msg.content,
+                                    timestamp: msg.timestamp,
+                                    is_me: false,
+                                    avatar_url: msg.avatar_url,
+                                    username_char: msg.username_char
+                                });
+                            });
+                        }
+                    })
+                    .catch(error => console.error('轮询失败:', error));
+            }
+
+            if (sendBtn) {
+                sendBtn.addEventListener('click', sendMessage);
+            }
+
+            if (messageInput) {
+                messageInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+            }
+
+            setInterval(pollNewMessages, 2000);
+        }
+    });
 </script>
 {% endblock %}
