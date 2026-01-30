@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% load community_extras %}
+
+{% block title %}我的收藏夹管理{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">📂 收藏夹管理</h3>
+            <p class="text-muted small mb-0">创建分类，整理您的知识库</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'user_app:profile' %}" class="btn btn-outline-secondary rounded-pill">
+                <i class="bi bi-arrow-left"></i> 返回个人中心
+            </a>
+            <button class="btn btn-success rounded-pill shadow-sm fw-bold px-4" data-bs-toggle="modal" data-bs-target="#createCollectionModal">
+                <i class="bi bi-folder-plus me-1"></i> 新建收藏夹
+            </button>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            {% if collections %}
+            <div class="accordion" id="collectionAccordion">
+                {% for col in collections %}
+                <div class="accordion-item border-0 shadow-sm mb-3 rounded-3 overflow-hidden" id="col-item-{{ col.id }}">
+                    
+                    <h2 class="accordion-header" id="heading-{{ col.id }}">
+                        <button class="accordion-button collapsed bg-white py-3 px-4 shadow-none" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#collapse-{{ col.id }}" 
+                                aria-expanded="false" style="border-radius: 12px;">
+                            
+                            <div class="d-flex align-items-center w-100 pe-2">
+                                <div class="me-auto overflow-hidden">
+                                    <div class="fw-bold text-dark text-truncate d-flex align-items-center gap-2">
+                                        <i class="bi bi-folder2-open text-warning fs-5"></i>
+                                        {{ col.name }}
+                                        {% if col.is_public %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success ms-1" style="font-size: 0.6rem;">公开</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-1" style="font-size: 0.6rem;">私密</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-muted small mt-1 text-truncate" style="max-width: 400px;">
+                                        {{ col.description|default:"暂无描述" }}
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-light text-secondary border rounded-pill me-3">
+                                        {{ col.post_count }} 篇
+                                    </span>
+                                    
+                                    <div class="manage-btn" onclick="toggleEditMode(event, '{{ col.id }}')" role="button">
+                                        <span class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 text-nowrap">
+                                            <i class="bi bi-gear-fill"></i> 管理
+                                        </span>
+                                    </div>
+                                    <div class="cancel-btn d-none" onclick="toggleEditMode(event, '{{ col.id }}')" role="button">
+                                        <span class="btn btn-sm btn-danger rounded-pill px-3 py-1 text-nowrap">
+                                            退出
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+
+                    <div id="collapse-{{ col.id }}" class="accordion-collapse collapse" data-bs-parent="#collectionAccordion">
+                        <div class="accordion-body bg-light p-0">
+                            
+                            <div class="action-toolbar bg-white border-bottom p-2 d-none justify-content-between align-items-center" id="toolbar-{{ col.id }}">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check ms-2">
+                                        <input class="form-check-input" type="checkbox" id="selectAll-{{ col.id }}" onchange="toggleSelectAll('{{ col.id }}')">
+                                        <label class="form-check-label small user-select-none" for="selectAll-{{ col.id }}">全选</label>
+                                    </div>
+                                    <form action="{% url 'community:delete_collection' col.pk %}" method="post" class="d-inline" onsubmit="return confirm('⚠️ 高风险操作\n\n确定要彻底删除收藏夹【{{ col.name }}】吗？\n收藏夹内的帖子本身不会被删除。');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none px-0" style="font-size: 0.8rem;">
+                                            删除此收藏夹
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="executeBatchAction('remove', '{{ col.id }}')">
+                                        <i class="bi bi-trash"></i> 移除帖子
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openMoveModal('{{ col.id }}')">
+                                        <i class="bi bi-arrow-right-circle"></i> 转移帖子
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="list-group list-group-flush" id="post-list-{{ col.id }}">
+                                {% for post in col.posts.all %}
+                                <div class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-start gap-3 post-item">
+                                    <div class="form-check mt-1 edit-checkbox d-none">
+                                        <input class="form-check-input post-check-{{ col.id }}" type="checkbox" value="{{ post.id }}">
+                                    </div>
+                                    
+                                    <div class="flex-grow-1 min-width-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <a href="{% url 'community:post_detail' post.pk %}" class="fw-bold text-dark text-decoration-none text-truncate d-block">
+                                                {{ post.title }}
+                                            </a>
+                                            {% if post.visibility == 'private' %}
+                                                <span class="badge bg-secondary ms-2 flex-shrink-0" style="font-size: 0.6rem;">私密</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex align-items-center small text-secondary">
+                                            <img src="{% if post.author.avatar %}{{ post.author.avatar.url }}{% else %}https://ui-avatars.com/api/?name={{ post.author.username }}&background=random{% endif %}" 
+                                                 class="rounded-circle me-2" width="20" height="20" style="aspect-ratio: 1/1;">
+                                            <span class="me-3">{{ post.author.nickname|default:post.author.username }}</span>
+                                            <span>{{ post.created_at|date:"Y-m-d" }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-4 text-muted small">
+                                    此收藏夹是空的。
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm border border-light">
+                <div class="display-1 mb-3 opacity-25">📂</div>
+                <h4 class="text-muted">还没有创建收藏夹</h4>
+                <p class="text-secondary mb-4">创建分类，开始整理你喜欢的帖子吧。</p>
+                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#createCollectionModal">
+                    立即创建
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createCollectionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">新建收藏夹</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if form.errors %}
+                        <div class="alert alert-danger">{{ form.errors }}</div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">名称</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">描述</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="form-check form-switch m-0 d-flex align-items-center w-100">
+                        {{ form.is_public }} 
+                        <label class="form-check-label ms-3 flex-grow-1" for="{{ form.is_public.id_for_label }}">
+                            <span class="fw-bold d-block">设为公开</span>
+                            <span class="text-muted small fw-normal">其他人可以在你的主页看到此收藏夹</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success px-4">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="moveCollectionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">转移到...</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="moveSourceId">
+                <div class="list-group" id="moveTargetList">
+                    </div>
+            </div>
+            <div class="modal-footer p-2">
+                 <button type="button" class="btn btn-sm btn-primary w-100" onclick="confirmMove()">确认转移</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 定义当前页面的收藏夹数据
+    const myCollections = [
+        {% for col in collections %}
+        { id: "{{ col.id }}", name: "{{ col.name }}" },
+        {% endfor %}
+    ];
+
+    // 1. 切换管理模式
+    function toggleEditMode(event, colId) {
+        event.preventDefault(); 
+        event.stopPropagation(); 
+        
+        const container = document.getElementById(`col-item-${colId}`);
+        const toolbar = document.getElementById(`toolbar-${colId}`);
+        const manageBtn = container.querySelector('.manage-btn');
+        const cancelBtn = container.querySelector('.cancel-btn');
+        const collapseElement = document.getElementById(`collapse-${colId}`);
+        
+        const bsCollapse = new bootstrap.Collapse(collapseElement, { toggle: false });
+        
+        if (toolbar.classList.contains('d-none')) {
+            bsCollapse.show();
+            toolbar.classList.remove('d-none');
+            toolbar.classList.add('d-flex');
+            manageBtn.classList.add('d-none');
+            cancelBtn.classList.remove('d-none');
+            container.querySelectorAll('.edit-checkbox').forEach(el => el.classList.remove('d-none'));
+        } else {
+            toolbar.classList.add('d-none');
+            toolbar.classList.remove('d-flex');
+            manageBtn.classList.remove('d-none');
+            cancelBtn.classList.add('d-none');
+            container.querySelectorAll('.edit-checkbox').forEach(el => el.classList.add('d-none'));
+            container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+    }
+
+    // 2. 全选
+    function toggleSelectAll(colId) {
+        const masterCheck = document.getElementById(`selectAll-${colId}`);
+        const inputs = document.querySelectorAll(`.post-check-${colId}`);
+        inputs.forEach(cb => cb.checked = masterCheck.checked);
+    }
+
+    // 3. 获取选中ID
+    function getSelectedIds(colId) {
+        const inputs = document.querySelectorAll(`.post-check-${colId}:checked`);
+        return Array.from(inputs).map(cb => cb.value);
+    }
+
+    // 4. 执行操作
+    function executeBatchAction(action, colId) {
+        const postIds = getSelectedIds(colId);
+        if (postIds.length === 0) {
+            alert("请至少选择一项！");
+            return;
+        }
+
+        if (action === 'remove' && !confirm(`确定要移除选中的 ${postIds.length} 篇帖子吗？`)) {
+            return;
+        }
+
+        sendBatchRequest(action, colId, postIds);
+    }
+
+    // 5. 打开转移模态框
+    function openMoveModal(sourceColId) {
+        const postIds = getSelectedIds(sourceColId);
+        if (postIds.length === 0) {
+            alert("请至少选择一项！");
+            return;
+        }
+        
+        document.getElementById('moveSourceId').value = sourceColId;
+        const listContainer = document.getElementById('moveTargetList');
+        listContainer.innerHTML = '';
+
+        let hasTargets = false;
+        myCollections.forEach(col => {
+            if (col.id !== sourceColId) {
+                hasTargets = true;
+                const label = document.createElement('label');
+                label.className = 'list-group-item list-group-item-action d-flex gap-2';
+                label.innerHTML = `
+                    <input class="form-check-input flex-shrink-0" type="radio" name="targetColRadio" value="${col.id}">
+                    <span>${col.name}</span>
+                `;
+                listContainer.appendChild(label);
+            }
+        });
+
+        if (!hasTargets) {
+            listContainer.innerHTML = '<div class="text-muted small text-center py-3">没有其他收藏夹可转移</div>';
+        }
+
+        new bootstrap.Modal(document.getElementById('moveCollectionModal')).show();
+    }
+
+    // 6. 确认转移
+    function confirmMove() {
+        const sourceColId = document.getElementById('moveSourceId').value;
+        const postIds = getSelectedIds(sourceColId);
+        const targetRadio = document.querySelector('input[name="targetColRadio"]:checked');
+        
+        if (!targetRadio) {
+            alert("请选择目标收藏夹");
+            return;
+        }
+        
+        sendBatchRequest('move', sourceColId, postIds, targetRadio.value);
+    }
+
+    // 7. 发送 AJAX 请求
+    function sendBatchRequest(action, sourceId, postIds, targetId=null) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+        
+        fetch("{% url 'community:manage_collection_posts' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                action: action,
+                source_collection_id: sourceId,
+                post_ids: postIds,
+                target_collection_id: targetId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                window.location.reload(); 
+            } else {
+                alert("操作失败: " + data.msg);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("网络错误，请稍后重试");
+        });
+    }
+</script>
+{% endblock %}

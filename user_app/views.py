@@ -13,7 +13,7 @@ from django.core.cache import cache # 👈 引入缓存
 from django.contrib.auth.hashers import make_password # 👈 用于手动加密密码
 from django.core.mail import send_mail # 👈 引入发邮件模块
 from django.conf import settings         # 👈 引入设置
-
+from django.db.models import Count # 👈 确保文件头部导入了 Count
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import RegisterForm, ProfileUpdateForm
 from notifications.models import Notification
@@ -207,7 +207,19 @@ def profile(request):
 @login_required
 def public_profile(request, pk):
     target_user = get_object_or_404(User, pk=pk)
+    if request.user == target_user:
+        user_posts = target_user.posts.all().order_by('-created_at')
+    else:
+        user_posts = target_user.posts.filter(visibility='public').order_by('-created_at')
     user_posts = target_user.posts.all().order_by('-created_at')
+    
+    # 2. 👇👇👇 新增：获取收藏夹列表 👇👇👇
+    if request.user == target_user:
+        # 看自己：显示所有收藏夹
+        collections = target_user.collections.annotate(post_count=Count('posts')).order_by('-updated_at')
+    else:
+        # 看别人：只显示公开的收藏夹
+        collections = target_user.collections.filter(is_public=True).annotate(post_count=Count('posts')).order_by('-updated_at')
     
     is_following = False
     if request.user.is_authenticated and request.user != target_user:
@@ -217,6 +229,7 @@ def public_profile(request, pk):
     context = {
         'target_user': target_user,
         'user_posts': user_posts,
+        'collections': collections, # 👈 把收藏夹数据传给模板
         'is_following': is_following,
         'followers_count': target_user.followers.count(),
         'following_count': target_user.following.count(),
@@ -228,10 +241,12 @@ def follow_user(request, pk):
     target_user = get_object_or_404(User, pk=pk)
     
     if target_user == request.user:
-        return redirect('user_app:public_profile', pk=pk)
+        # 如果是自己，哪里来的回哪里
+        return redirect(request.META.get('HTTP_REFERER', 'home'))
 
     if request.user.following.filter(id=target_user.id).exists():
         request.user.following.remove(target_user)
+        # 取消关注不发通知
     else:
         request.user.following.add(target_user)
         Notification.objects.create(
@@ -242,8 +257,15 @@ def follow_user(request, pk):
             content='关注了你'
         )
 
-    return HttpResponseRedirect(reverse('user_app:public_profile', args=[pk]))
-
+    # 👇👇👇 核心修复：尝试跳回上一页 👇👇👇
+    # 获取 HTTP 请求头中的 Referer (来源页面)
+    next_url = request.META.get('HTTP_REFERER')
+    
+    if next_url:
+        return redirect(next_url)
+    
+    # 如果获取不到来源 (极少数情况)，则回对方主页兜底
+    return redirect('user_app:public_profile', pk=pk)
 @login_required
 def following_list(request, pk):
     target_user = get_object_or_404(User, pk=pk)

@@ -21,4 +21,18 @@ urlpatterns = [
     
     # 图片上传 (Vditor编辑器用)
     path('upload/image/', views.upload_image, name='upload_image'),
+    # 编辑与删除
+    path('post/<int:pk>/edit/', views.PostUpdateView.as_view(), name='post_edit'),
+    path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),
+    
+    # 收藏相关
+    path('post/<int:pk>/bookmark/', views.toggle_bookmark, name='toggle_bookmark'),
+    path('my-collections/', views.my_collections, name='my_collections'),
+    # 👇👇👇 新增收藏夹路由
+    path('collections/', views.my_collections, name='my_collections'),
+    path('collections/delete/<int:pk>/', views.delete_collection, name='delete_collection'),
+    path('post/<int:pk>/collect/', views.collect_post, name='collect_post'),
+    # 👇 新增 API 路由
+    path('api/manage-collection/', views.manage_collection_posts, name='manage_collection_posts'),
+    path('api/create-collection/', views.api_create_collection, name='api_create_collection'), # 👈 新增这行
 ]

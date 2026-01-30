@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white fw-bold">
+                ⚠️ 确认删除
+            </div>
+            <div class="card-body p-4 text-center">
+                <h5 class="mb-3">确定要删除帖子 "<strong>{{ object.title }}</strong>" 吗？</h5>
+                <p class="text-muted">此操作不可恢复，相关的评论也将一并删除。</p>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <a href="{% url 'community:post_detail' object.pk %}" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-danger px-4 fw-bold">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

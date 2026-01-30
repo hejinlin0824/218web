@@ -2,72 +2,125 @@
 
 {% block title %}添加好友{% endblock %}
 
+{# 🔥 隐藏侧边栏 #}
 {% block sidebar %}{% endblock %}
 
 {% block content_container %}
 <div class="col-12">
-    <div class="container py-3">
+    <div class="container py-4">
+        
         <div class="mb-4">
-            <a href="{% url 'direct_messages:inbox' %}" class="btn btn-outline-secondary rounded-pill px-4">
-                <i class="bi bi-arrow-left"></i> 返回消息中心
+            <a href="{% url 'direct_messages:inbox' %}" class="btn btn-white bg-white text-secondary rounded-pill px-4 shadow-sm border">
+                <i class="bi bi-arrow-left me-1"></i> 返回消息中心
             </a>
         </div>
 
         <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-4">
-                        <h4 class="fw-bold mb-4">🔍 搜索校友/导师</h4>
+            <div class="col-lg-8">
+                
+                <div class="card shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
+                    <div class="card-body p-4 p-md-5 bg-white">
+                        <div class="text-center mb-4">
+                            <h3 class="fw-bold mb-2">🔍 寻找伙伴</h3>
+                            <p class="text-muted">通过昵称、用户名或学号搜索校友和导师</p>
+                        </div>
                         
-                        <form method="get" class="mb-4">
-                            <div class="input-group">
-                                <input type="text" name="q" class="form-control form-control-lg" placeholder="输入昵称、用户名或学号..." value="{{ query }}">
-                                <button class="btn btn-primary btn-lg" type="submit">搜索</button>
+                        <form method="get" class="position-relative">
+                            <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
+                                <span class="input-group-text bg-white border-0 ps-4"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" name="q" class="form-control border-0 ps-2" 
+                                       placeholder="输入关键词搜索..." value="{{ query }}" aria-label="Search" style="font-size: 1rem;">
+                                <button class="btn btn-primary px-4 fw-bold" type="submit">搜 索</button>
                             </div>
                         </form>
-
-                        {% if query %}
-                            <h6 class="text-muted mb-3">搜索结果</h6>
-                            <div class="list-group">
-                                {% for u in users %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                    <div class="d-flex align-items-center">
-                                        {% if u.avatar %}
-                                            <img src="{{ u.avatar.url }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
-                                        {% else %}
-                                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" 
-                                                 style="width: 50px; height: 50px; font-size: 1.5rem;">
-                                                {{ u.username.0|upper }}
-                                            </div>
-                                        {% endif %}
-                                        <div>
-                                            <h5 class="mb-0 fw-bold">
-                                                <a href="{% url 'user_app:public_profile' u.pk %}" class="text-decoration-none text-dark">{{ u.nickname|default:u.username }}</a>
-                                            </h5>
-                                            <span class="badge bg-light text-dark border">{{ u.get_status_display }}</span>
-                                            <small class="text-muted ms-2">Lv.{{ u.level }}</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        {% if u in request.user.get_friends %}
-                                            <button class="btn btn-secondary btn-sm" disabled>已是好友</button>
-                                        {% else %}
-                                            <a href="{% url 'user_app:add_friend' u.pk %}" class="btn btn-outline-primary btn-sm">
-                                                + 添加好友
-                                            </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% empty %}
-                                <div class="text-center py-5 text-muted">未找到匹配的用户</div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
                     </div>
                 </div>
+
+                {% if query %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                        <h6 class="text-muted mb-0 fw-bold">搜索结果</h6>
+                        <span class="badge bg-light text-secondary border rounded-pill">{{ users|length }} 位用户</span>
+                    </div>
+
+                    <div class="list-group shadow-sm rounded-4 overflow-hidden border-0">
+                        {% for u in users %}
+                        <div class="list-group-item p-3 border-0 border-bottom d-flex align-items-center user-item-hover">
+                            
+                            <a href="{% url 'user_app:public_profile' u.pk %}" class="flex-shrink-0 me-3 text-decoration-none">
+                                {% if u.avatar %}
+                                    <img src="{{ u.avatar.url }}" class="rounded-circle border" 
+                                         style="width: 56px; height: 56px; object-fit: cover; aspect-ratio: 1/1;"> {% else %}
+                                    <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center border fw-bold" 
+                                         style="width: 56px; height: 56px; font-size: 1.5rem;">
+                                        {{ u.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                            </a>
+
+                            <div class="flex-grow-1 min-width-0">
+                                <div class="d-flex align-items-center mb-1">
+                                    <a href="{% url 'user_app:public_profile' u.pk %}" class="text-dark text-decoration-none">
+                                        <h5 class="mb-0 fw-bold text-truncate">{{ u.nickname|default:u.username }}</h5>
+                                    </a>
+                                    
+                                    <span class="badge bg-light text-dark border ms-2 rounded-pill fw-normal" style="font-size: 0.7rem;">
+                                        {{ u.get_status_display }}
+                                    </span>
+                                </div>
+                                <div class="text-muted small">
+                                    <span class="me-2 text-warning fw-bold">Lv.{{ u.level }}</span>
+                                    <span class="text-secondary opacity-50">|</span>
+                                    <span class="ms-2 text-truncate" style="max-width: 200px; display: inline-block; vertical-align: bottom;">
+                                        {{ u.bio|default:"暂无简介" }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="ms-3">
+                                {% if u == request.user %}
+                                    <span class="badge bg-light text-secondary border rounded-pill px-3 py-2">我自己</span>
+                                {% elif u in request.user.get_friends %}
+                                    <button class="btn btn-light btn-sm text-muted border rounded-pill px-3" disabled>
+                                        <i class="bi bi-check2"></i> 已是好友
+                                    </button>
+                                {% else %}
+                                    <a href="{% url 'user_app:add_friend' u.pk %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold hover-scale">
+                                        <i class="bi bi-person-plus-fill me-1"></i> 加好友
+                                    </a>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item p-5 text-center border-0">
+                            <div class="display-1 mb-3 opacity-25">🦖</div>
+                            <h5 class="text-muted">没有找到匹配的用户</h5>
+                            <p class="text-secondary small mb-0">尝试更换关键词，或者确认学号是否正确。</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* 列表悬停效果 */
+    .user-item-hover {
+        transition: background-color 0.2s;
+    }
+    .user-item-hover:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* 按钮微动效 */
+    .hover-scale {
+        transition: transform 0.1s;
+    }
+    .hover-scale:active {
+        transform: scale(0.95);
+    }
+</style>
 {% endblock %}

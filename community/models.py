@@ -49,7 +49,12 @@ class Post(models.Model):
     views = models.PositiveIntegerField('浏览量', default=0)
     created_at = models.DateTimeField('发布时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
-
+    # 👇👇👇 新增：可见性设置
+    VISIBILITY_CHOICES = (
+        ('public', '🌍 公开'),
+        ('private', '🔒 仅自己可见'),
+    )
+    visibility = models.CharField('可见性', max_length=10, choices=VISIBILITY_CHOICES, default='public')
     class Meta:
         verbose_name = '帖子'
         verbose_name_plural = verbose_name
@@ -95,3 +100,22 @@ class Comment(models.Model):
 
     def __str__(self):
         return f'{self.author} 评论了 {self.post}'
+
+# 👇👇👇 新增：收藏夹模型
+class Collection(models.Model):
+    """用户创建的收藏夹"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='collections', verbose_name='创建者')
+    name = models.CharField('收藏夹名称', max_length=50)
+    description = models.TextField('描述', blank=True)
+    posts = models.ManyToManyField(Post, related_name='collected_in', blank=True, verbose_name='收藏的帖子')
+    is_public = models.BooleanField('是否公开收藏夹', default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '收藏夹'
+        verbose_name_plural = verbose_name
+        unique_together = ('user', 'name') # 同一个用户不能有两个同名收藏夹
+
+    def __str__(self):
+        return f"{self.user.username} 的收藏夹: {self.name}"
