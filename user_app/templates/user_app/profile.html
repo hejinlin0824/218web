@@ -2,185 +2,358 @@
 
 {% block title %}个人中心 - {{ user.nickname|default:user.username }}{% endblock %}
 
+{# 🔥 覆盖 sidebar 为空，全宽布局 #}
 {% block sidebar %}{% endblock %}
 
 {% block content_container %}
 <div class="col-12">
     {% block content %}
-    <div class="container py-3">
-        
-        <div class="mb-4">
-            <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill px-4">
-                <i class="bi bi-arrow-left"></i> 返回大厅
-            </a>
-        </div>
+    
+    <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
+    <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
 
-        <div class="row justify-content-center">
+    <style>
+        /* 背景装饰 */
+        .profile-bg {
+            height: 200px;
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            border-radius: 0 0 50% 50% / 20px;
+            margin-bottom: -100px;
+            position: relative;
+            z-index: 0;
+        }
+
+        /* 头像容器 */
+        .profile-avatar-box {
+            width: 140px;
+            height: 140px;
+            position: relative;
+            margin: 0 auto 1rem;
+        }
+        .profile-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+            background-color: #fff;
+        }
+        .profile-level-badge {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: white;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* 统计数字 */
+        .stat-box {
+            transition: all 0.2s;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .stat-box:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-2px);
+        }
+
+        /* 表单区域 */
+        .form-section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* 🔥 关键：左侧卡片吸顶效果 */
+        .sticky-profile-card {
+            position: sticky;
+            top: 100px; /* 距离顶部的距离，留出导航栏空间 */
+            z-index: 10;
+        }
+    </style>
+
+    <div class="profile-bg"></div>
+
+    <div class="container pb-5" style="position: relative; z-index: 1;">
+        
+        <div class="row g-4">
             
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body text-center p-4">
+            <div class="col-lg-4">
+                <div class="card shadow border-0 rounded-4 overflow-hidden sticky-profile-card">
+                    <div class="card-body text-center pt-5 pb-4 px-4">
                         
-                        <div class="mb-3">
-                            <div class="avatar-wrapper">
-                                {% if user.avatar %}
-                                    <img src="{{ user.avatar.url }}" style="width: 120px; height: 120px;">
-                                {% else %}
-                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
-                                         style="width: 120px; height: 120px; font-size: 3rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
-                                        {{ user.username.0|upper }}
-                                    </div>
-                                {% endif %}
-                                <span class="avatar-badge" style="font-size: 0.9rem; padding: 2px 8px;">Lv.{{ user.level }}</span>
-                            </div>
+                        <div class="profile-avatar-box">
+                            {% if user.avatar %}
+                                <img src="{{ user.avatar.url }}" class="profile-avatar-img" id="avatarPreview">
+                            {% else %}
+                                <div class="profile-avatar-img d-flex align-items-center justify-content-center bg-secondary text-white display-1 fw-bold">
+                                    {{ user.username.0|upper }}
+                                </div>
+                            {% endif %}
+                            <div class="profile-level-badge">Lv.{{ user.level }}</div>
                         </div>
 
                         <h4 class="fw-bold mb-1">{{ user.nickname|default:user.username }}</h4>
-                        <p class="text-muted small mb-2">{{ user.email }}</p>
-
                         <div class="mb-3">
                             {% if user.status == 'newbie' %}
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill">
-                                    🌱 {{ user.get_status_display }}
-                                </span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill">🌱 {{ user.get_status_display }}</span>
                             {% elif user.status == 'student' %}
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill">
-                                    🎓 {{ user.get_status_display }}
-                                </span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">🎓 {{ user.get_status_display }}</span>
                             {% elif user.status == 'alumni' %}
-                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-3 py-2 rounded-pill">
-                                    🏆 {{ user.get_status_display }}
-                                </span>
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill">🏆 {{ user.get_status_display }}</span>
                             {% elif user.status == 'faculty' %}
-                                <span class="badge bg-dark bg-opacity-10 text-dark border border-dark px-3 py-2 rounded-pill">
-                                    👨‍🏫 {{ user.get_status_display }}
-                                </span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill">👨‍🏫 {{ user.get_status_display }}</span>
                             {% endif %}
                         </div>
 
-                        <div class="row g-2 mb-3 px-2">
-                            <div class="col-4">
-                                <div class="border rounded-3 p-2 bg-light">
-                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">等级</div>
-                                    <div class="fw-bold text-dark">Lv.{{ user.level }}</div>
+                        <p class="text-muted small fst-italic px-3 mb-4">
+                            "{{ user.bio|default:"这个人很懒，还没有写简介~" }}"
+                        </p>
+
+                        <div class="row g-2 mb-4 border-top border-bottom py-3">
+                            <div class="col-4 border-end">
+                                <div class="stat-box">
+                                    <div class="h5 fw-bold mb-0 text-dark">{{ user.following.count }}</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">关注</small>
+                                </div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="stat-box">
+                                    <div class="h5 fw-bold mb-0 text-dark">{{ user.followers.count }}</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">粉丝</small>
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="border rounded-3 p-2 bg-light">
-                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">成长值</div>
-                                    <div class="fw-bold text-success">{{ user.growth }}</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="border rounded-3 p-2 bg-light">
-                                    <div class="small text-muted mb-1" style="font-size: 0.7rem;">硬币</div>
-                                    <div class="fw-bold text-warning">🪙 {{ user.coins }}</div>
+                                <div class="stat-box">
+                                    <div class="h5 fw-bold mb-0 text-dark">{{ user.posts.count }}</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">帖子</small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="px-3 mb-4">
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="fw-bold text-muted" style="font-size: 0.7rem;">升级进度</span>
-                                <span class="font-monospace" style="font-size: 0.7rem;">{{ user.level_progress }}/100</span>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-secondary small">升级进度</span>
+                                <small class="text-success fw-bold">{{ user.level_progress }}%</small>
                             </div>
-                            <div class="pixel-progress-container">
-                                <div class="pixel-progress-bar" style="width: {{ user.level_progress }}%;"></div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ user.level_progress }}%"></div>
                             </div>
-                        </div>
-
-                        <div class="d-flex justify-content-center mb-4 bg-light py-3 rounded-3">
-                            <a href="{% url 'user_app:following_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
-                                <div class="h5 fw-bold mb-0 text-primary">{{ user.following.count }}</div>
-                                <small class="text-muted">关注</small>
-                            </a>
-                            <a href="{% url 'user_app:followers_list' user.pk %}" class="px-3 border-end text-decoration-none text-dark">
-                                <div class="h5 fw-bold mb-0 text-primary">{{ user.followers.count }}</div>
-                                <small class="text-muted">粉丝</small>
-                            </a>
-                            <div class="px-3">
-                                <div class="h5 fw-bold mb-0 text-primary">{{ user.posts.count }}</div>
-                                <small class="text-muted">帖子</small>
+                            <div class="d-flex justify-content-between mt-2 small text-muted">
+                                <span>成长值: {{ user.growth }}</span>
+                                <span>硬币: 🪙 {{ user.coins }}</span>
                             </div>
                         </div>
 
-                        <a href="{% url 'user_app:public_profile' user.pk %}" class="btn btn-outline-primary w-100 rounded-pill">
-                            👀 预览我的公开主页
-                        </a>
+                        <div class="d-grid gap-2 mb-3">
+                            <a href="{% url 'user_app:public_profile' user.pk %}" class="btn btn-outline-primary rounded-pill">
+                                👀 预览主页
+                            </a>
+                            <a href="{% url 'home' %}" class="btn btn-light rounded-pill text-muted">
+                                返回大厅
+                            </a>
+                        </div>
+                        
+                        <div class="border-top pt-3 text-start small text-muted">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span><i class="bi bi-shield-check text-success"></i> 邮箱验证</span>
+                                <span>{% if user.email_verified %}已验证{% else %}未验证{% endif %}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span><i class="bi bi-calendar3"></i> 加入时间</span>
+                                <span>{{ user.date_joined|date:"Y-m-d" }}</span>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-8">
-                <div class="card shadow-sm border-0">
+            <div class="col-lg-8">
+                <div class="card shadow border-0 rounded-4">
                     <div class="card-header bg-white py-3 border-bottom-0">
-                        <h5 class="mb-0 fw-bold">⚙️ 编辑资料</h5>
+                        <h5 class="mb-0 fw-bold border-start border-4 border-primary ps-3">⚙️ 编辑资料</h5>
                     </div>
                     <div class="card-body p-4">
+                        
                         <form method="post" enctype="multipart/form-data">
                             {% csrf_token %}
-                            
+
                             {% if form.non_field_errors %}
-                                <div class="alert alert-danger">
-                                    {{ form.non_field_errors }}
-                                </div>
+                                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
                             {% endif %}
 
-                            {% for field in form %}
-                                <div class="mb-4" id="div_{{ field.name }}" 
-                                     style="{% if field.name == 'student_id' %}display:none;{% endif %}">
-                                    <label class="form-label fw-bold text-secondary small">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                        <div class="form-text text-muted">{{ field.help_text }}</div>
+                            <div class="form-section-title">基本信息</div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">昵称</label>
+                                    {{ form.nickname }}
+                                    {% if form.nickname.errors %}<div class="text-danger small">{{ form.nickname.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">邮箱 (不可修改)</label>
+                                    {{ form.email }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small">一句话简介</label>
+                                    {{ form.bio }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small">上传头像</label>
+                                    {{ form.avatar }}
+                                    <div class="form-text small">支持 jpg, png, webp 格式，建议尺寸 200x200。</div>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">身份认证</div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">当前身份</label>
+                                    {{ form.status }}
+                                    <div class="form-text small">毕业后请切换为"毕业校友"，切换后不可回退。</div>
+                                </div>
+                                
+                                <div class="col-md-6" id="div_student_id" style="display: none;">
+                                    <label class="form-label fw-bold small">学号 (Student ID)</label>
+                                    {{ form.student_id }}
+                                    {% if form.student_id.errors %}
+                                        <div class="text-danger small">{{ form.student_id.errors.0 }}</div>
                                     {% endif %}
-                                    {% if field.errors %}
-                                        <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                                    <div class="form-text small">请填写真实学号以通过白名单验证。</div>
+                                </div>
+                            </div>
+
+                            {% if user.status == 'faculty' or user.status == 'student' or user.status == 'alumni' %}
+                            <div class="form-section-title text-primary">📝 详细个人介绍 (支持 Markdown)</div>
+                            <div class="mb-4">
+                                <div id="vditor" class="mb-2"></div>
+                                <textarea name="detailed_intro" id="detailed_intro_hidden" class="d-none">
+                                    {{ form.detailed_intro.value|default:'' }}
+                                </textarea>
+                                <div class="form-text small">
+                                    {% if user.status == 'faculty' %}
+                                        此内容将显示在“实验室介绍”页面的<strong>导师详情</strong>中。
+                                    {% else %}
+                                        此内容将显示在“实验室介绍”页面的<strong>成员简介弹窗</strong>中。
                                     {% endif %}
                                 </div>
-                            {% endfor %}
+                            </div>
+                            {% endif %}
 
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
-                                <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                            <div class="d-flex justify-content-end gap-3 mt-5 border-top pt-4">
+                                <button type="reset" class="btn btn-light rounded-pill px-4">重置</button>
+                                <button type="submit" id="saveBtn" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
                                     💾 保存更改
                                 </button>
                             </div>
+
                         </form>
+
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const statusSelect = document.getElementById('id_profile_status'); 
-            const studentIdDiv = document.getElementById('div_student_id');
-            const studentIdInput = document.getElementById('id_profile_student_id');
-            const currentStatus = "{{ user.status }}"; 
-
-            if (currentStatus === 'alumni') {
-                if(statusSelect) statusSelect.disabled = true;
-                if(studentIdInput) studentIdInput.disabled = true;
-            }
-
-            function toggleStudentId() {
-                if (!statusSelect) return;
-                const val = statusSelect.value;
-                if (val === 'student' || val === 'alumni') {
-                    studentIdDiv.style.display = 'block';
-                    setTimeout(() => { studentIdDiv.style.opacity = '1'; }, 10);
-                } else {
-                    studentIdDiv.style.display = 'none';
-                }
-            }
-
-            if (statusSelect) {
-                statusSelect.addEventListener('change', toggleStudentId);
-                toggleStudentId(); 
-            }
-        });
-    </script>
     {% endblock %}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // 1. 头像预览
+        const avatarInput = document.querySelector('input[type="file"][name="avatar"]');
+        const avatarPreview = document.getElementById('avatarPreview');
+        if (avatarInput && avatarPreview) {
+            avatarInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        avatarPreview.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // 2. 学号显示逻辑
+        const statusSelect = document.getElementById('id_profile_status') || document.querySelector('select[name="status"]');
+        const studentIdDiv = document.getElementById('div_student_id');
+        const studentIdInput = document.getElementById('id_profile_student_id') || document.querySelector('input[name="student_id"]');
+        
+        const currentUserStatus = "{{ user.status }}";
+
+        if (currentUserStatus === 'alumni') {
+            if(statusSelect) statusSelect.disabled = true;
+            if(studentIdInput) studentIdInput.disabled = true;
+        }
+
+        function toggleStudentId() {
+            if (!statusSelect) return;
+            const val = statusSelect.value;
+            if (val === 'student' || val === 'alumni') {
+                studentIdDiv.style.display = 'block';
+                studentIdDiv.style.opacity = 0;
+                setTimeout(() => { 
+                    studentIdDiv.style.opacity = 1; 
+                    studentIdDiv.style.transition = 'opacity 0.3s';
+                }, 10);
+            } else {
+                studentIdDiv.style.display = 'none';
+            }
+        }
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', toggleStudentId);
+            toggleStudentId(); 
+        }
+
+        // 3. Vditor 初始化
+        {% if user.status == 'faculty' or user.status == 'student' or user.status == 'alumni' %}
+            const hiddenInput = document.getElementById('detailed_intro_hidden');
+            const vditor = new Vditor('vditor', {
+                height: 400,
+                mode: 'sv', 
+                value: hiddenInput.value,
+                placeholder: '请输入详细介绍（支持 Markdown 语法）...',
+                cache: { enable: false },
+                toolbar: ['emoji', 'headings', 'bold', 'italic', 'strike', 'link', '|', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|', 'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|', 'upload', 'table', 'edit-mode'],
+                upload: {
+                    accept: 'image/jpg, image/jpeg, image/png, image/gif',
+                    url: '{% url "community:upload_image" %}',
+                    linkToImgUrl: '{% url "community:upload_image" %}',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                    fieldName: 'file[]',
+                    format(files, responseText) {
+                        const res = JSON.parse(responseText);
+                        return JSON.stringify({
+                            msg: res.msg, code: res.code,
+                            data: { succMap: { [files[0].name]: res.data.succMap[files[0].name] } }
+                        });
+                    }
+                },
+                input(value) {
+                    hiddenInput.value = value;
+                }
+            });
+
+            document.getElementById('saveBtn').addEventListener('click', function() {
+                hiddenInput.value = vditor.getValue();
+            });
+        {% endif %}
+    });
+</script>
 {% endblock %}

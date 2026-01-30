@@ -1,145 +1,143 @@
 {% extends 'base.html' %}
+{% load community_extras %}
 
 {% block title %}{{ post.title }} - 社区{% endblock %}
 
 {% block content %}
 <style>
+    /* 头像样式 */
     .avatar-wrapper { position: relative; display: inline-block; vertical-align: middle; }
     .avatar-wrapper img { border: 3px solid #fff; box-shadow: 0 0 0 2px #e0e0e0; border-radius: 50%; object-fit: cover; box-sizing: content-box; }
     .avatar-badge { position: absolute; bottom: -2px; right: -5px; background: linear-gradient(45deg, #FFD700, #FFA500); color: #fff; font-size: 0.6rem; font-weight: bold; padding: 1px 6px; border-radius: 10px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
+
+    /* 侧边栏 Sticky 效果 */
+    .sticky-sidebar {
+        position: sticky;
+        top: 80px; /* 距离顶部的距离 */
+        z-index: 1;
+    }
+
+    /* 目录样式优化 */
+    #outline-content ul { padding-left: 1rem; list-style: none; border-left: 2px solid #eee; }
+    #outline-content li { margin-bottom: 0.5rem; }
+    #outline-content a { color: #6c757d; text-decoration: none; font-size: 0.9rem; display: block; transition: all 0.2s; }
+    #outline-content a:hover { color: #0d6efd; padding-left: 5px; }
+    
+    /* Vditor 预览优化 */
+    .vditor-reset {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+        font-size: 16px !important; /* 加大字号 */
+        line-height: 1.8 !important; /* 增加行高 */
+    }
+    .vditor-reset h1, .vditor-reset h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3em; margin-bottom: 1em; }
 </style>
 
-<div class="row justify-content-center">
-    <div class="col-md-8">
+<div class="row g-4"> <div class="col-lg-9">
         
-        <nav aria-label="breadcrumb">
+        <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'community:post_list' %}">社区首页</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'community:post_list' %}" class="text-decoration-none">社区首页</a></li>
                 <li class="breadcrumb-item active" aria-current="page">帖子详情</li>
             </ol>
         </nav>
 
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body p-4">
-                
-                <div class="mb-2">
+        <div class="card shadow-sm mb-4 border-0 rounded-3">
+            <div class="card-body p-4 p-md-5"> <div class="mb-3">
                     {% for tag in post.tags.all %}
                         <a href="{% url 'community:post_list' %}?tag={{ tag.slug }}" 
-                           class="badge text-decoration-none me-1" 
-                           style="background-color: {{ tag.color }}; color: white;">
-                            {{ tag.name }}
+                           class="badge text-decoration-none me-1 rounded-pill px-3 py-2" 
+                           style="background-color: {{ tag.color }}; color: white; opacity: 0.9;">
+                            # {{ tag.name }}
                         </a>
                     {% endfor %}
                 </div>
 
-                <h2 class="card-title fw-bold mb-3">{{ post.title }}</h2>
+                <h1 class="card-title fw-bold mb-4 text-dark" style="font-size: 2rem;">{{ post.title }}</h1>
                 
-                <div class="d-flex align-items-center mb-4 text-muted small">
-                    <div class="d-flex align-items-center me-3">
-                        <a href="{% url 'user_app:public_profile' post.author.pk %}" class="text-decoration-none d-flex align-items-center text-dark">
-                            <div class="avatar-wrapper me-2">
-                                {% if post.author.avatar %}
-                                    <img src="{{ post.author.avatar.url }}" style="width: 32px; height: 32px;">
-                                {% else %}
-                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" 
-                                         style="width: 32px; height: 32px; font-size: 0.8rem; border: 2px solid #fff;">
-                                        {{ post.author.username.0|upper }}
-                                    </div>
-                                {% endif %}
-                                <span class="avatar-badge" style="font-size: 0.5rem; padding: 0 3px; right: -3px;">Lv.{{ post.author.level }}</span>
-                            </div>
-                            
-                            <span class="fw-bold">{{ post.author.nickname|default:post.author.username }}</span>
-                        </a>
-                    </div>
+                <div class="d-flex align-items-center mb-4 text-muted small d-lg-none border-bottom pb-3">
+                    <img src="{% if post.author.avatar %}{{ post.author.avatar.url }}{% else %}https://ui-avatars.com/api/?name={{ post.author.username }}&background=random{% endif %}" 
+                         class="rounded-circle me-2" width="32" height="32">
+                    <span class="fw-bold me-2">{{ post.author.nickname|default:post.author.username }}</span>
                     <span class="me-2">·</span>
-                    <span>{{ post.created_at|date:"Y-m-d H:i" }}</span>
-                    <span class="me-2">·</span>
-                    <span>👁️ {{ post.views }} 次浏览</span>
+                    <span>{{ post.created_at|smart_time }}</span>
                 </div>
 
                 <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
                 <script src="https://unpkg.com/vditor/dist/method.min.js"></script>
 
-                <div id="markdown-preview" class="vditor-reset fs-5 lh-lg"></div>
-
+                <div id="markdown-preview" class="vditor-reset"></div>
+                
                 {{ post.content|json_script:"post-content-data" }}
 
-                <script>
-                    document.addEventListener("DOMContentLoaded", function() {
-                        try {
-                            const markdownText = JSON.parse(document.getElementById('post-content-data').textContent);
-                            Vditor.preview(document.getElementById('markdown-preview'), markdownText, {
-                                mode: 'light',
-                                anchor: 1,
-                                math: { engine: 'KaTeX' },
-                                hljs: { style: 'github' },
-                            });
-                        } catch (e) {
-                            console.error("Markdown 渲染失败:", e);
-                        }
-                    });
-                </script>
-            </div>
-            
-            <div class="card-footer bg-white border-top-0 pb-3 pt-0">
-                <div class="d-flex align-items-center">
-                    <form action="{% url 'community:like_post' post.pk %}" method="post">
-                        {% csrf_token %}
-                        {% if is_liked %}
-                            <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3">
-                                ❤️ 已赞 {{ post.likes.count }}
-                            </button>
-                        {% else %}
-                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
-                                🤍 点赞 {{ post.likes.count }}
-                            </button>
-                        {% endif %}
-                    </form>
-                    <small class="text-muted ms-3">
-                        {{ post.likes.count }} 人觉得很赞
-                    </small>
+                <div class="mt-5 pt-4 border-top d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <form action="{% url 'community:like_post' post.pk %}" method="post">
+                            {% csrf_token %}
+                            {% if is_liked %}
+                                <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm">
+                                    <i class="bi bi-heart-fill me-1"></i> 已赞 {{ post.likes.count }}
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                                    <i class="bi bi-heart me-1"></i> 点赞 {{ post.likes.count }}
+                                </button>
+                            {% endif %}
+                        </form>
+                        <span class="text-muted small">
+                            <i class="bi bi-eye me-1"></i> {{ post.views }} 浏览
+                        </span>
+                    </div>
+                    <div class="text-muted small">
+                        发布于 {{ post.created_at|date:"Y-m-d H:i" }}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0" id="comments-section">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0">评论 ({{ post.comments.count }})</h5>
+        <div class="card shadow-sm border-0 rounded-3" id="comments-section">
+            <div class="card-header bg-white py-3 border-bottom-0">
+                <h5 class="mb-0 fw-bold border-start border-4 border-primary ps-2">评论 ({{ post.comments.count }})</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 
                 {% if user.is_authenticated %}
-                <div class="mb-5">
-                    <form method="post" id="commentForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="parent_id" id="parentIdField" value="">
+                <div class="mb-5 d-flex gap-3">
+                    <div class="flex-shrink-0 d-none d-md-block">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" class="rounded-circle" width="40" height="40" style="object-fit:cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;">{{ user.username.0|upper }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <form method="post" id="commentForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="parent_id" id="parentIdField" value="">
 
-                        <div id="replyAlert" class="alert alert-info py-2 d-none align-items-center justify-content-between">
-                            <small>
-                                ↩️ 正在回复 <strong id="replyTarget">某人</strong>
-                            </small>
-                            <button type="button" class="btn-close btn-sm" onclick="cancelReply()"></button>
-                        </div>
+                            <div id="replyAlert" class="alert alert-info py-2 d-none align-items-center justify-content-between mb-2">
+                                <small>↩️ 正在回复 <strong id="replyTarget">某人</strong></small>
+                                <button type="button" class="btn-close btn-sm" onclick="cancelReply()"></button>
+                            </div>
 
-                        <div class="mb-2">
-                            {{ form.content }}
-                        </div>
-                        <div class="d-flex justify-content-end align-items-center">
-                            <small class="text-muted me-3">主动评论可获奖励：🪙1 📈5</small>
-                            <button type="submit" class="btn btn-primary px-4">发表评论</button>
-                        </div>
-                    </form>
+                            <div class="mb-2">
+                                {{ form.content }}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">✨ 友善评论是交流的起点</small>
+                                <button type="submit" class="btn btn-primary px-4 rounded-pill">发表评论</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
                 {% else %}
-                <div class="alert alert-warning text-center mb-4">
-                    请 <a href="{% url 'user_app:login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">登录</a> 后参与讨论
+                <div class="alert alert-light text-center mb-4 border py-4">
+                    👋 请 <a href="{% url 'user_app:login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">登录</a> 后参与讨论
                 </div>
                 {% endif %}
 
                 <div class="list-group list-group-flush">
                     {% for comment in comments %}
-                    <div class="list-group-item px-0 border-bottom-0 mb-3" id="comment-{{ comment.id }}">
+                    <div class="list-group-item px-0 border-bottom-0 mb-4" id="comment-{{ comment.id }}">
                         <div class="d-flex">
                             <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="flex-shrink-0 me-3 text-decoration-none">
                                 <div class="avatar-wrapper">
@@ -154,71 +152,70 @@
                                 </div>
                             </a>
                             
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="flex-grow-1 bg-light p-3 rounded-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div>
                                         <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold me-1 text-decoration-none text-dark">
                                             {{ comment.author.nickname|default:comment.author.username }}
                                         </a>
-                                        <small class="text-muted">{{ comment.created_at|smart_time }}</small>
+                                        <small class="text-muted ms-1">{{ comment.created_at|smart_time }}</small>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">•••</button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                            <li><a class="dropdown-item" href="#" onclick="alert('举报功能开发中...')">🚩 举报</a></li>
+                                        </ul>
                                     </div>
                                 </div>
                                 
-                                <p class="mb-2 text-dark text-break">{{ comment.content }}</p>
+                                <p class="mb-2 text-dark text-break fs-6">{{ comment.content }}</p>
                                 
-                                <div class="d-flex align-items-center">
-                                    <a href="{% url 'community:like_comment' comment.id %}" class="text-decoration-none me-3 small {% if request.user in comment.likes.all %}text-danger{% else %}text-muted{% endif %}">
-                                        {% if request.user in comment.likes.all %}❤️{% else %}🤍{% endif %} 
+                                <div class="d-flex align-items-center gap-3">
+                                    <a href="{% url 'community:like_comment' comment.id %}" class="text-decoration-none small {% if request.user in comment.likes.all %}text-danger{% else %}text-muted{% endif %}">
+                                        <i class="bi {% if request.user in comment.likes.all %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
                                         {{ comment.likes.count }}
                                     </a>
 
                                     {% if user.is_authenticated %}
                                     <button class="btn btn-link btn-sm text-decoration-none p-0 text-muted small" 
                                             onclick="setReply('{{ comment.id }}', '{{ comment.author.nickname|default:comment.author.username }}')">
-                                        ↩️ 回复
+                                        <i class="bi bi-reply"></i> 回复
                                     </button>
                                     {% endif %}
                                 </div>
 
                                 {% if comment.replies.all %}
-                                <div class="bg-light p-3 rounded-3 mt-2">
+                                <div class="bg-white border p-3 rounded-3 mt-3">
                                     {% for reply in comment.replies.all %}
-                                    <div class="d-flex mb-2" id="comment-{{ reply.id }}">
+                                    <div class="d-flex mb-3" id="comment-{{ reply.id }}">
                                         <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="me-2 text-decoration-none">
-                                            <div class="avatar-wrapper">
-                                                {% if reply.author.avatar %}
-                                                    <img src="{{ reply.author.avatar.url }}" style="width: 24px; height: 24px;">
-                                                {% else %}
-                                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 10px; border: 2px solid #fff;">
-                                                        {{ reply.author.username.0|upper }}
-                                                    </div>
-                                                {% endif %}
-                                                <span class="avatar-badge" style="font-size: 0.4rem; padding: 0 2px; right: -2px;">Lv.{{ reply.author.level }}</span>
-                                            </div>
+                                            {% if reply.author.avatar %}
+                                                <img src="{{ reply.author.avatar.url }}" class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 10px;">
+                                                    {{ reply.author.username.0|upper }}
+                                                </div>
+                                            {% endif %}
                                         </a>
                                         <div class="flex-grow-1">
-                                            <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="fw-bold small text-decoration-none text-dark">
-                                                {{ reply.author.nickname|default:reply.author.username }}
-                                            </a>
-
-                                            <span class="text-muted small mx-1">回复</span>
-                                            <a href="{% url 'user_app:public_profile' comment.author.pk %}" class="fw-bold small text-primary text-decoration-none">
-                                                @{{ comment.author.nickname|default:comment.author.username }}
-                                            </a>
-                                            <span class="text-muted small ms-2">{{ reply.created_at|smart_time }}</span>
-                                            
-                                            <p class="mb-0 small text-secondary mt-1 text-break">{{ reply.content }}</p>
-                                            
-                                            <div class="mt-1">
-                                                <a href="{% url 'community:like_comment' reply.id %}" class="text-decoration-none small {% if request.user in reply.likes.all %}text-danger{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">
-                                                    {% if request.user in reply.likes.all %}❤️{% else %}🤍{% endif %} 
-                                                    {{ reply.likes.count }}
+                                            <div class="small">
+                                                <a href="{% url 'user_app:public_profile' reply.author.pk %}" class="fw-bold text-dark text-decoration-none">
+                                                    {{ reply.author.nickname|default:reply.author.username }}
                                                 </a>
-                                                
+                                                <span class="text-muted mx-1">回复</span>
+                                                <a href="#" class="text-primary text-decoration-none">@{{ comment.author.nickname|default:comment.author.username }}</a>
+                                                <span class="text-muted ms-2">{{ reply.created_at|smart_time }}</span>
+                                            </div>
+                                            <p class="mb-1 small text-secondary mt-1">{{ reply.content }}</p>
+                                            
+                                            <div class="d-flex align-items-center gap-3">
+                                                <a href="{% url 'community:like_comment' reply.id %}" class="text-decoration-none small {% if request.user in reply.likes.all %}text-danger{% else %}text-muted{% endif %}">
+                                                    <i class="bi {% if request.user in reply.likes.all %}bi-heart-fill{% else %}bi-heart{% endif %}"></i> {{ reply.likes.count }}
+                                                </a>
                                                 {% if user.is_authenticated %}
-                                                <button class="btn btn-link btn-sm text-decoration-none p-0 ms-2 text-muted small" style="font-size: 0.8rem;"
+                                                <button class="btn btn-link btn-sm text-decoration-none p-0 text-muted small"
                                                         onclick="setReply('{{ reply.id }}', '{{ reply.author.nickname|default:reply.author.username }}')">
-                                                    ↩️ 回复
+                                                    回复
                                                 </button>
                                                 {% endif %}
                                             </div>
@@ -232,7 +229,7 @@
                     </div>
                     {% empty %}
                     <div class="text-center py-5 text-muted">
-                        <div class="display-4 mb-2">🛋️</div>
+                        <div class="display-4 mb-2 opacity-50">🛋️</div>
                         <p>还没有人评论，快来抢沙发！</p>
                     </div>
                     {% endfor %}
@@ -240,9 +237,117 @@
             </div>
         </div>
     </div>
+
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="sticky-sidebar">
+            
+            <div class="card shadow-sm border-0 mb-3 rounded-3 text-center">
+                <div class="card-body p-4">
+                    <a href="{% url 'user_app:public_profile' post.author.pk %}" class="text-decoration-none">
+                        <div class="avatar-wrapper mb-3">
+                            {% if post.author.avatar %}
+                                <img src="{{ post.author.avatar.url }}" style="width: 80px; height: 80px;">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto" style="width: 80px; height: 80px; font-size: 2rem;">
+                                    {{ post.author.username.0|upper }}
+                                </div>
+                            {% endif %}
+                            <span class="avatar-badge">Lv.{{ post.author.level }}</span>
+                        </div>
+                    </a>
+                    <h5 class="fw-bold mb-1 text-dark">{{ post.author.nickname|default:post.author.username }}</h5>
+                    <p class="text-muted small mb-3">{{ post.author.bio|default:"这个人很懒，没有写简介"|truncatechars:30 }}</p>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        {% if user != post.author %}
+                            <form action="{% url 'user_app:follow_user' post.author.pk %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    关注 TA
+                                </button>
+                            </form>
+                            <a href="{% url 'direct_messages:chat_room' post.author.pk %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                                私信
+                            </a>
+                        {% else %}
+                            <a href="{% url 'user_app:profile' %}" class="btn btn-sm btn-outline-secondary rounded-pill w-100">编辑资料</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">
+                    📖 文章目录
+                </div>
+                <div class="card-body pt-0">
+                    <div id="outline-content" class="small text-muted">
+                        <div class="text-center py-3">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. 渲染 Markdown
+        try {
+            const markdownText = JSON.parse(document.getElementById('post-content-data').textContent);
+            const previewEl = document.getElementById('markdown-preview');
+            
+            Vditor.preview(previewEl, markdownText, {
+                mode: 'light',
+                anchor: 1, // 开启标题锚点
+                math: { engine: 'KaTeX' },
+                hljs: { style: 'github' },
+                
+                // 渲染完成后，生成目录
+                after() {
+                    generateTOC(previewEl);
+                }
+            });
+        } catch (e) {
+            console.error("Markdown 渲染失败:", e);
+        }
+    });
+
+    // 2. 自动生成目录函数
+    function generateTOC(contentElement) {
+        const headings = contentElement.querySelectorAll('h1, h2, h3');
+        const tocContainer = document.getElementById('outline-content');
+        
+        if (headings.length === 0) {
+            tocContainer.innerHTML = '<div class="text-center py-3 text-muted opacity-50">暂无目录</div>';
+            return;
+        }
+
+        let tocHtml = '<ul class="list-unstyled mb-0">';
+        headings.forEach((heading, index) => {
+            const level = parseInt(heading.tagName.substring(1));
+            const text = heading.textContent;
+            const id = heading.id || `heading-${index}`;
+            heading.id = id; // 确保标题有 ID
+
+            // 根据层级缩进
+            const paddingLeft = (level - 1) * 15 + 'px';
+            
+            tocHtml += `
+                <li style="padding-left: ${paddingLeft}">
+                    <a href="#${id}" onclick="event.preventDefault(); document.getElementById('${id}').scrollIntoView({behavior: 'smooth', block: 'center'});">
+                        ${text}
+                    </a>
+                </li>
+            `;
+        });
+        tocHtml += '</ul>';
+        tocContainer.innerHTML = tocHtml;
+    }
+
+    // 3. 评论回复逻辑
     function setReply(commentId, authorName) {
         document.getElementById('parentIdField').value = commentId;
         document.getElementById('replyTarget').innerText = authorName;

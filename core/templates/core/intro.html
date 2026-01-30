@@ -4,209 +4,353 @@
 
 {% block content %}
 <style>
-    /* 导师/组员通用头像样式 */
-    .avatar-wrapper { position: relative; display: inline-block; vertical-align: middle; cursor: pointer; transition: transform 0.2s; }
-    .avatar-wrapper:hover { transform: scale(1.05); }
-    .avatar-wrapper img { border: 3px solid #fff; box-shadow: 0 0 0 2px #e0e0e0; border-radius: 50%; object-fit: cover; box-sizing: content-box; }
-    .avatar-badge { position: absolute; bottom: -2px; right: -5px; background: linear-gradient(45deg, #FFD700, #FFA500); color: #fff; font-size: 0.6rem; font-weight: bold; padding: 1px 6px; border-radius: 10px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
+    /* === 实验室介绍页专用样式 === */
 
-    /* 简介展开区域 (通用) */
-    .bio-section {
-        display: none; 
+    /* 1. 头部 Banner */
+    .lab-hero {
+        background: linear-gradient(120deg, #2c3e50 0%, #4ca1af 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 4rem 2rem;
+        position: relative;
         overflow: hidden;
-        transition: all 0.5s ease-in-out;
+        box-shadow: 0 1rem 3rem rgba(0,0,0,0.15);
+    }
+    .lab-hero::after {
+        content: "DSSG";
+        position: absolute;
+        top: -20px;
+        right: 20px;
+        font-size: 8rem;
+        font-weight: 900;
+        opacity: 0.1;
+        pointer-events: none;
+    }
+
+    /* 2. 成员卡片 (Member Card) */
+    .member-card {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border: none;
+        background: white;
+        overflow: hidden;
+    }
+    .member-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 2rem rgba(0,0,0,0.1) !important;
     }
     
-    /* 选中头像的高亮样式 */
-    .active-indicator {
-        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25) !important;
-        border-color: #0d6efd !important;
+    /* 头像样式 */
+    .avatar-fixed-box {
+        position: relative;
+        flex-shrink: 0;
+        width: 60px;
+        height: 60px;
+        margin-right: 1rem;
+    }
+    .avatar-fixed-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        display: block;
+    }
+
+    /* 学生头像居中 */
+    .student-avatar-box {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 0.5rem;
+    }
+
+    /* 3. 研究方向 (Topic) */
+    .topic-card-header {
+        background-color: white;
+        transition: background-color 0.2s;
+    }
+    .topic-card-header:hover {
+        background-color: #f8f9fa;
+    }
+    .topic-icon {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    /* 4. 论文成果 */
+    .pub-item {
+        border-left: 4px solid transparent;
+        transition: all 0.2s;
+    }
+    .pub-item:hover {
+        background-color: #f8f9fa;
+        border-left-color: #0d6efd;
+    }
+    .pub-highlight {
+        background-color: #fffbf0;
+        border-left-color: #ffc107;
+    }
+    .pub-year-badge {
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+        opacity: 0.6;
+        min-width: 50px;
+        display: inline-block;
+    }
+
+    /* 简介展开区 */
+    .bio-expand-section {
+        display: none; /* 默认隐藏 */
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0 8px 8px 0;
     }
     
-    .popover { max-width: 250px; }
-    
-    .accordion-button:not(.collapsed) { color: #0d6efd; background-color: #e7f1ff; font-weight: bold; }
-    .accordion-button:focus { box-shadow: none; border-color: rgba(0,0,0,.125); }
-    .topic-render-content p:last-child { margin-bottom: 0; }
+    /* 🔥 滚动条优化：限制简介高度，防止页面过长 */
+    .bio-scroll-content {
+        max-height: 400px; /* 固定高度 */
+        overflow-y: auto;  /* 超出滚动 */
+        padding-right: 5px; /* 防止滚动条遮挡文字 */
+    }
+    /* 美化滚动条 */
+    .bio-scroll-content::-webkit-scrollbar { width: 4px; }
+    .bio-scroll-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+    /* 加载动画 */
+    .loading-spinner-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
 </style>
 
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        
-        <div class="text-center mb-5">
-            <h1 class="fw-bold display-5">关于实验室</h1>
-            <p class="text-muted lead">MIPS Lab-DSSG</p>
-            <hr class="w-25 mx-auto text-primary" style="height: 3px; opacity: 1;">
-        </div>
-
-        <div class="mb-5">
-            <h3 class="fw-bold mb-4 border-start border-4 border-success ps-3">研究方向</h3>
-            <div class="accordion shadow-sm" id="researchAccordion">
-                {% for topic in topics %}
-                <div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header" id="heading{{ topic.id }}">
-                        <button class="accordion-button collapsed py-4" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ topic.id }}" aria-expanded="false" aria-controls="collapse{{ topic.id }}">
-                            <span class="fs-4 me-3">{{ topic.icon }}</span>
-                            <span class="fs-5">{{ topic.title }}</span>
-                        </button>
-                    </h2>
-                    <div id="collapse{{ topic.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ topic.id }}" data-bs-parent="#researchAccordion">
-                        <div class="accordion-body bg-light p-4">
-                            <div id="topic-render-{{ topic.id }}" class="topic-render-content vditor-reset"></div>
-                            <div id="topic-source-{{ topic.id }}" class="d-none">{{ topic.description }}</div>
-                        </div>
+<div class="container-xl">
+    
+    <div class="lab-hero mb-5 animate__animated animate__fadeIn">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-5 fw-bold mb-3">数据科学与智能计算实验室</h1>
+                <p class="lead mb-4 opacity-90">Data Science & Smart Generation Laboratory (DSSG)</p>
+                <div class="d-flex gap-3">
+                    <div class="d-flex align-items-center bg-white bg-opacity-10 rounded-pill px-3 py-2 border border-white border-opacity-25">
+                        <span class="fs-5 me-2">🎓</span>
+                        <span>成员 <strong>{{ students.count|add:faculties.count }}</strong> 人</span>
+                    </div>
+                    <div class="d-flex align-items-center bg-white bg-opacity-10 rounded-pill px-3 py-2 border border-white border-opacity-25">
+                        <span class="fs-5 me-2">📜</span>
+                        <span>成果 <strong>{{ publications.count }}</strong> 项</span>
                     </div>
                 </div>
-                {% empty %}
-                <div class="text-muted p-3">暂无研究方向数据。</div>
-                {% endfor %}
+            </div>
+            <div class="col-lg-4 text-center d-none d-lg-block">
+                <div style="font-size: 8rem; opacity: 0.8;">🧬</div>
             </div>
         </div>
+    </div>
 
-        <div class="mb-5">
-            <h3 class="fw-bold mb-4 border-start border-4 border-primary ps-3">指导教师</h3>
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="row row-cols-2 row-cols-md-5 g-4 text-center">
-                        {% for teacher in faculties %}
-                        <div class="col position-relative">
-                            <div class="avatar-wrapper mb-2 faculty-avatar-item" 
-                                 id="faculty-avatar-{{ teacher.id }}"
-                                 tabindex="0"
-                                 role="button"
-                                 data-bs-toggle="popover" 
-                                 data-bs-trigger="click" 
-                                 data-bs-container="body"
-                                 data-bs-html="true"
-                                 data-bs-placement="top"
-                                 data-bs-title="{{ teacher.nickname|default:teacher.username }}"
-                                 data-bs-content="
-                                    <div class='d-grid gap-2'>
-                                        <button class='btn btn-sm btn-primary' onclick='showFacultyBio({{ teacher.id }})'>📖 查看简介</button>
-                                        <a href='{% url 'user_app:public_profile' teacher.pk %}' class='btn btn-sm btn-outline-secondary'>🏠 前往主页</a>
+    <div class="row g-5">
+        
+        <div class="col-lg-8">
+            
+            <section class="mb-5 animate__animated animate__fadeInUp">
+                <div class="d-flex align-items-center mb-4">
+                    <h3 class="fw-bold mb-0 text-dark">🔬 研究方向</h3>
+                    <div class="ms-3 flex-grow-1 border-bottom"></div>
+                </div>
+                
+                <div class="accordion shadow-sm rounded-3 overflow-hidden border-0" id="researchAccordion">
+                    {% for topic in topics %}
+                    <div class="accordion-item border-0 border-bottom">
+                        <h2 class="accordion-header" id="heading{{ topic.id }}">
+                            <button class="accordion-button collapsed topic-card-header py-4" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse{{ topic.id }}" 
+                                    aria-expanded="false" aria-controls="collapse{{ topic.id }}">
+                                <div class="d-flex align-items-center w-100">
+                                    <div class="topic-icon me-3">
+                                        {{ topic.icon }}
                                     </div>
-                                 ">
-                                {% if teacher.avatar %}
-                                    <img src="{{ teacher.avatar.url }}" style="width: 80px; height: 80px;" class="mb-1">
-                                {% else %}
-                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto" 
-                                         style="width: 80px; height: 80px; font-size: 2rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
-                                        {{ teacher.username.0|upper }}
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-dark">{{ topic.title }}</h5>
+                                        <small class="text-muted">点击查看详情</small>
                                     </div>
-                                {% endif %}
-                                <span class="avatar-badge">Lv.{{ teacher.level }}</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ topic.id }}" class="accordion-collapse collapse" 
+                             aria-labelledby="heading{{ topic.id }}" data-bs-parent="#researchAccordion">
+                            <div class="accordion-body bg-light p-4">
+                                <div id="topic-loading-{{ topic.id }}" class="loading-spinner-container">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    资源加载中...
+                                </div>
+                                <div id="topic-render-{{ topic.id }}" class="vditor-reset fs-6 text-secondary d-none"></div>
+                                <div id="topic-source-{{ topic.id }}" class="d-none">{{ topic.description }}</div>
                             </div>
-                            <h6 class="fw-bold mb-0 text-truncate px-2">{{ teacher.nickname|default:teacher.username }}</h6>
-                            <small class="text-muted">导师</small>
-                            <div id="faculty-bio-source-{{ teacher.id }}" class="d-none">{{ teacher.detailed_intro|default:"暂无详细介绍" }}</div>
                         </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">暂无研究方向数据。</div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="animate__animated animate__fadeInUp animate__delay-1s">
+                <div class="d-flex align-items-center mb-4">
+                    <h3 class="fw-bold mb-0 text-dark">🏆 代表性成果</h3>
+                    <div class="ms-3 flex-grow-1 border-bottom"></div>
+                </div>
+
+                <div class="card shadow-sm border-0 rounded-3">
+                    <div class="list-group list-group-flush rounded-3">
+                        {% for pub in publications %}
+                        <a href="{{ pub.link|default:'#' }}" target="_blank" class="list-group-item list-group-item-action p-4 pub-item {% if pub.is_highlight %}pub-highlight{% endif %}">
+                            <div class="d-flex">
+                                <div class="me-3 text-center flex-shrink-0">
+                                    <span class="badge bg-light text-dark border pub-year-badge">{{ pub.year }}</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1 fw-bold text-dark lh-base">
+                                        {% if pub.is_highlight %}
+                                            <span class="text-danger me-1">🔥</span>
+                                        {% endif %}
+                                        {{ pub.title }}
+                                    </h5>
+                                    <div class="text-secondary small mb-1 fst-italic">{{ pub.authors }}</div>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="badge bg-secondary bg-opacity-10 text-dark fw-bold">{{ pub.venue }}</span>
+                                        {% if pub.link %}
+                                            <span class="text-primary small fw-bold">View Paper <i class="bi bi-arrow-up-right"></i></span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
                         {% empty %}
-                        <div class="col-12 text-muted">暂无导师数据。</div>
+                        <div class="text-center py-5 text-muted">暂无成果展示。</div>
                         {% endfor %}
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div id="faculty-bio-section" class="bio-section mt-3">
-                <div class="card bg-light border-0 shadow-inner">
-                    <div class="card-body p-4 position-relative">
-                        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" onclick="closeFacultyBio()" aria-label="Close"></button>
-                        <h4 class="fw-bold text-primary mb-3">导师简介</h4>
-                        <div id="faculty-bio-render" class="vditor-reset text-dark"></div>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <div class="mb-5">
-            <h3 class="fw-bold mb-4 border-start border-4 border-warning ps-3">在读组员</h3>
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="row row-cols-2 row-cols-md-5 g-4 text-center">
-                        {% for student in students %}
-                        <div class="col position-relative">
-                            <div class="avatar-wrapper mb-2 student-avatar-item" 
-                                 id="student-avatar-{{ student.id }}"
-                                 tabindex="0"
-                                 role="button"
-                                 data-bs-toggle="popover" 
-                                 data-bs-trigger="click" 
-                                 data-bs-container="body"
-                                 data-bs-html="true"
-                                 data-bs-placement="top"
-                                 data-bs-title="{{ student.nickname|default:student.username }}"
-                                 data-bs-content="
-                                    <div class='d-grid gap-2'>
-                                        <button class='btn btn-sm btn-primary' onclick='showStudentBio({{ student.id }})'>📖 查看简介</button>
-                                        <a href='{% url 'user_app:public_profile' student.pk %}' class='btn btn-sm btn-outline-secondary'>🏠 前往主页</a>
+        <div class="col-lg-4">
+            
+            <section class="mb-5 animate__animated animate__fadeInRight">
+                <div class="d-flex align-items-center mb-4">
+                    <h4 class="fw-bold mb-0 text-dark">👨‍🏫 指导教师</h4>
+                </div>
+                
+                <div class="row g-3">
+                    {% for teacher in faculties %}
+                    <div class="col-12">
+                        <div class="card member-card shadow-sm rounded-3 p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-fixed-box">
+                                    {% if teacher.avatar %}
+                                        <img src="{{ teacher.avatar.url }}" class="avatar-fixed-img">
+                                    {% else %}
+                                        <div class="avatar-fixed-img bg-dark text-white d-flex align-items-center justify-content-center fw-bold" style="font-size:1.5rem;">
+                                            {{ teacher.username.0|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <span class="position-absolute bottom-0 start-100 translate-middle badge rounded-pill bg-primary border border-white">
+                                        Lv.{{ teacher.level }}
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 min-width-0">
+                                    <h5 class="fw-bold mb-1 text-truncate">{{ teacher.nickname|default:teacher.username }}</h5>
+                                    <p class="text-muted small mb-2 text-truncate">MIPS Lab 导师</p>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill faculty-bio-btn" 
+                                                data-id="{{ teacher.id }}"
+                                                onclick="toggleFacultyBio({{ teacher.id }})">
+                                            简介
+                                        </button>
+                                        <a href="{% url 'user_app:public_profile' teacher.pk %}" class="btn btn-sm btn-light py-0 px-3 rounded-pill">主页</a>
                                     </div>
-                                 ">
+                                </div>
+                            </div>
+                            
+                            <div id="faculty-bio-{{ teacher.id }}" class="bio-expand-section mt-3 p-3 small position-relative">
+                                <div id="faculty-loading-{{ teacher.id }}" class="loading-spinner-container d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    加载中...
+                                </div>
+                                <div class="bio-scroll-content">
+                                    <div id="faculty-bio-render-{{ teacher.id }}" class="vditor-reset text-secondary d-none"></div>
+                                </div>
+                                <div id="faculty-bio-source-{{ teacher.id }}" class="d-none">{{ teacher.detailed_intro|default:"暂无介绍" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="animate__animated animate__fadeInRight animate__delay-1s">
+                <div class="d-flex align-items-center mb-4">
+                    <h4 class="fw-bold mb-0 text-dark">🎓 在读组员</h4>
+                </div>
+
+                <div class="row g-2">
+                    {% for student in students %}
+                    <div class="col-6">
+                        <div class="card member-card shadow-sm rounded-3 text-center p-3 h-100">
+                            <div class="avatar-fixed-box student-avatar-box mb-2 position-relative">
                                 {% if student.avatar %}
-                                    <img src="{{ student.avatar.url }}" style="width: 80px; height: 80px;" class="mb-1">
+                                    <img src="{{ student.avatar.url }}" class="avatar-fixed-img">
                                 {% else %}
-                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto" 
-                                         style="width: 80px; height: 80px; font-size: 2rem; border: 3px solid #fff; box-shadow: 0 0 0 2px #ccc;">
+                                    <div class="avatar-fixed-img bg-secondary text-white d-flex align-items-center justify-content-center fw-bold w-100 h-100">
                                         {{ student.username.0|upper }}
                                     </div>
                                 {% endif %}
-                                <span class="avatar-badge">Lv.{{ student.level }}</span>
+                            </div>
+                            <h6 class="fw-bold mb-2 text-truncate" style="font-size: 0.9rem;">{{ student.nickname|default:student.username }}</h6>
+                            
+                            <div class="d-flex justify-content-center gap-1">
+                                <button class="btn btn-sm btn-light border py-0 px-2 small rounded-pill" style="font-size: 0.75rem;" onclick="toggleStudentBio({{ student.id }})">简介</button>
+                                <a href="{% url 'user_app:public_profile' student.pk %}" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" style="font-size: 0.75rem;">主页</a>
                             </div>
                             
-                            <h6 class="fw-bold mb-0 text-truncate px-2">{{ student.nickname|default:student.username }}</h6>
-                            {% if student.student_id %}
-                                <small class="text-muted d-block" style="font-size: 0.7rem;">在读成员</small>
-                            {% endif %}
-
-                            <div id="student-bio-source-{{ student.id }}" class="d-none">
-                                {{ student.detailed_intro|default:"该成员暂无详细介绍。" }}
-                            </div>
+                            <div id="student-bio-source-{{ student.id }}" class="d-none">{{ student.detailed_intro|default:"暂无介绍" }}</div>
                         </div>
-                        {% empty %}
-                        <div class="col-12 text-muted py-4">暂无在读组成员。</div>
-                        {% endfor %}
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">暂无在读组员</div>
+                    {% endfor %}
+                </div>
+
+                <div id="shared-bio-display" class="card shadow-sm border-0 bg-light mt-3 d-none">
+                    <div class="card-body position-relative">
+                         <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="document.getElementById('shared-bio-display').classList.add('d-none')" aria-label="Close"></button>
+                         <h6 class="fw-bold mb-2 text-primary" id="bio-title">成员简介</h6>
+                         
+                         <div id="shared-loading" class="loading-spinner-container d-none">
+                             <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                             加载中...
+                         </div>
+                         
+                         <div class="bio-scroll-content">
+                             <div id="shared-bio-content" class="vditor-reset small d-none"></div>
+                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div id="student-bio-section" class="bio-section mt-3">
-                <div class="card bg-light border-0 shadow-inner">
-                    <div class="card-body p-4 position-relative">
-                        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" onclick="closeStudentBio()" aria-label="Close"></button>
-                        <h4 class="fw-bold text-warning mb-3">成员简介</h4>
-                        <div id="student-bio-render" class="vditor-reset text-dark"></div>
-                    </div>
-                </div>
-            </div>
         </div>
-
-        <div class="mb-5">
-            <h3 class="fw-bold mb-4 border-start border-4 border-danger ps-3">代表性成果</h3>
-            <div class="list-group shadow-sm">
-                {% for pub in publications %}
-                <a href="{{ pub.link|default:'#' }}" target="_blank" class="list-group-item list-group-item-action p-4 pub-card {% if pub.is_highlight %}bg-light{% endif %}">
-                    <div class="d-flex w-100 justify-content-between align-items-start">
-                        <div>
-                            <h5 class="mb-1 fw-bold text-dark">
-                                {% if pub.is_highlight %}🔥 {% endif %}
-                                {{ pub.title }}
-                            </h5>
-                            <p class="mb-1 text-secondary fst-italic">{{ pub.authors }}</p>
-                            <small class="text-muted">
-                                <span class="badge bg-secondary me-2">{{ pub.year }}</span>
-                                <span class="fw-bold">{{ pub.venue }}</span>
-                            </small>
-                        </div>
-                        {% if pub.link %}
-                        <small class="text-primary fw-bold">View PDF ↗</small>
-                        {% endif %}
-                    </div>
-                </a>
-                {% empty %}
-                <div class="text-center py-4 text-muted">暂无成果展示。</div>
-                {% endfor %}
-            </div>
-        </div>
-
     </div>
 </div>
 
@@ -215,85 +359,87 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        
-        // 1. 渲染“研究方向” (保持不变)
+        // 1. 渲染研究方向 (带加载状态)
         {% for topic in topics %}
             (function(){
-                const topicSourceDiv = document.getElementById('topic-source-{{ topic.id }}');
-                const topicRenderDiv = document.getElementById('topic-render-{{ topic.id }}');
-                if (topicSourceDiv && topicRenderDiv) {
-                    Vditor.preview(topicRenderDiv, topicSourceDiv.textContent.trim(), { mode: 'light', anchor: 0 });
+                const loading = document.getElementById('topic-loading-{{ topic.id }}');
+                const renderDiv = document.getElementById('topic-render-{{ topic.id }}');
+                const sourceDiv = document.getElementById('topic-source-{{ topic.id }}');
+
+                if (sourceDiv && renderDiv) {
+                    Vditor.preview(renderDiv, sourceDiv.textContent.trim(), {
+                        mode: 'light',
+                        anchor: 0,
+                        after() {
+                            if(loading) loading.classList.add('d-none');
+                            renderDiv.classList.remove('d-none');
+                        }
+                    });
                 }
             })();
         {% endfor %}
-
-        // 2. 初始化 Popover
-        const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-        const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-            return new bootstrap.Popover(popoverTriggerEl, { trigger: 'click', html: true, sanitize: false })
-        });
-
-        // 3. 点击空白处关闭 Popover
-        document.body.addEventListener('click', function (e) {
-            if (!e.target.closest('[data-bs-toggle="popover"]') && !e.target.closest('.popover')) {
-                popoverList.forEach(p => p.hide());
-            } else if (e.target.closest('[data-bs-toggle="popover"]')) {
-                const currentTrigger = e.target.closest('[data-bs-toggle="popover"]');
-                popoverList.forEach(p => { if (p._element !== currentTrigger) p.hide(); });
-            }
-        });
-
-        // === 导师简介逻辑 ===
-        window.showFacultyBio = function(userId) {
-            popoverList.forEach(p => p.hide()); // 关闭气泡
-            closeStudentBio(); // 关闭学生的简介框（互斥）
-            
-            const section = document.getElementById('faculty-bio-section');
-            const renderDiv = document.getElementById('faculty-bio-render');
-            const sourceDiv = document.getElementById('faculty-bio-source-' + userId);
-            
-            // 切换头像高亮
-            document.querySelectorAll('.faculty-avatar-item img').forEach(el => el.classList.remove('active-indicator'));
-            const activeImg = document.querySelector('#faculty-avatar-' + userId + ' img');
-            if(activeImg) activeImg.classList.add('active-indicator');
-
-            if (sourceDiv) {
-                Vditor.preview(renderDiv, sourceDiv.textContent.trim(), { mode: 'light', anchor: 1 });
-                section.style.display = 'block';
-                section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        };
-
-        window.closeFacultyBio = function() {
-            document.getElementById('faculty-bio-section').style.display = 'none';
-            document.querySelectorAll('.faculty-avatar-item img').forEach(el => el.classList.remove('active-indicator'));
-        };
-
-        // === 👇 学生简介逻辑 (新增) ===
-        window.showStudentBio = function(userId) {
-            popoverList.forEach(p => p.hide()); // 关闭气泡
-            closeFacultyBio(); // 关闭导师的简介框（互斥）
-
-            const section = document.getElementById('student-bio-section');
-            const renderDiv = document.getElementById('student-bio-render');
-            const sourceDiv = document.getElementById('student-bio-source-' + userId);
-            
-            // 切换头像高亮
-            document.querySelectorAll('.student-avatar-item img').forEach(el => el.classList.remove('active-indicator'));
-            const activeImg = document.querySelector('#student-avatar-' + userId + ' img');
-            if(activeImg) activeImg.classList.add('active-indicator');
-
-            if (sourceDiv) {
-                Vditor.preview(renderDiv, sourceDiv.textContent.trim(), { mode: 'light', anchor: 1 });
-                section.style.display = 'block';
-                section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        };
-
-        window.closeStudentBio = function() {
-            document.getElementById('student-bio-section').style.display = 'none';
-            document.querySelectorAll('.student-avatar-item img').forEach(el => el.classList.remove('active-indicator'));
-        };
     });
+
+    // 2. 导师简介控制 (互斥展开 + 滚动)
+    function toggleFacultyBio(id) {
+        const area = document.getElementById(`faculty-bio-${id}`);
+        const render = document.getElementById(`faculty-bio-render-${id}`);
+        const source = document.getElementById(`faculty-bio-source-${id}`);
+        const loading = document.getElementById(`faculty-loading-${id}`);
+        
+        // 如果当前是打开的，就关闭它
+        if (area.style.display === 'block') {
+            area.style.display = 'none';
+            return;
+        }
+
+        // 🔥 核心修改：关闭所有其他导师的简介
+        document.querySelectorAll('.bio-expand-section').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // 展开当前的
+        area.style.display = 'block';
+        
+        // 如果还没渲染过（避免重复渲染导致闪烁），或者你想每次都重新渲染也可以
+        // 这里假设每次点击都渲染以保证状态一致
+        if(loading) loading.classList.remove('d-none');
+        render.classList.add('d-none');
+
+        Vditor.preview(render, source.textContent.trim(), {
+            mode: 'light',
+            after() {
+                if(loading) loading.classList.add('d-none');
+                render.classList.remove('d-none');
+            }
+        });
+    }
+
+    // 3. 学生简介控制 (共用区域)
+    function toggleStudentBio(id) {
+        // 关闭所有导师的展开项，避免太乱
+        document.querySelectorAll('.bio-expand-section').forEach(el => el.style.display = 'none');
+
+        const displayBox = document.getElementById('shared-bio-display');
+        const contentBox = document.getElementById('shared-bio-content');
+        const loading = document.getElementById('shared-loading');
+        const source = document.getElementById(`student-bio-source-${id}`);
+        
+        displayBox.classList.remove('d-none');
+        
+        if(loading) loading.classList.remove('d-none');
+        contentBox.classList.add('d-none');
+
+        // 滚动到简介区
+        displayBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        Vditor.preview(contentBox, source.textContent.trim(), {
+            mode: 'light',
+            after() {
+                if(loading) loading.classList.add('d-none');
+                contentBox.classList.remove('d-none');
+            }
+        });
+    }
 </script>
 {% endblock %}

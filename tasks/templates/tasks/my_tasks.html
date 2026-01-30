@@ -1,121 +1,323 @@
 {% extends 'base.html' %}
 
-{% block title %}我的任务{% endblock %}
+{% block title %}任务中心 - 218 实验室{% endblock %}
 
 {% block content %}
+<style>
+    /* === 任务中心专用样式 === */
+    
+    /* 顶部 Banner */
+    .task-hero {
+        background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        border-radius: 1rem;
+        padding: 3rem 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 20px rgba(253, 160, 133, 0.2);
+    }
+    .task-hero::before {
+        content: "TASKS";
+        position: absolute;
+        top: -10px;
+        right: 10px;
+        font-size: 6rem;
+        font-weight: 900;
+        opacity: 0.15;
+        pointer-events: none;
+    }
+
+    /* 任务卡片 */
+    .task-card {
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border: 1px solid rgba(0,0,0,0.05);
+        background: white;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+    }
+    .task-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
+        border-color: rgba(0,0,0,0.1);
+    }
+
+    /* 状态徽章 */
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* 金币样式 */
+    .bounty-tag {
+        background-color: #fff8e1;
+        color: #d4a017;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid #ffe69c;
+    }
+
+    /* 导师指令样式 */
+    .faculty-tag {
+        background-color: #fce8e6;
+        color: #dc3545;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid #fadbd8;
+    }
+
+    /* Tab 样式优化 */
+    .nav-pills-task .nav-link {
+        color: #6c757d;
+        background: transparent;
+        font-weight: 600;
+        padding: 10px 20px;
+        border-radius: 50rem;
+        transition: all 0.2s;
+    }
+    .nav-pills-task .nav-link.active {
+        background-color: #fff;
+        color: #0d6efd;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .nav-pills-wrapper {
+        background-color: #f1f3f5;
+        padding: 5px;
+        border-radius: 50rem;
+        display: inline-flex;
+    }
+</style>
+
 <div class="row justify-content-center">
-    <div class="col-md-9">
-        <h3 class="fw-bold mb-4">📋 任务管理</h3>
-
-        <ul class="nav nav-tabs mb-4">
-            <li class="nav-item">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#my-published" type="button">
-                    📤 我发布的
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#my-joined" type="button">
-                    📥 我参与的
-                </button>
-            </li>
-        </ul>
-
-        <div class="tab-content">
-            <div class="tab-pane fade show active" id="my-published">
-                <div class="list-group shadow-sm">
-                    {% for task in created_tasks %}
-                        <a href="{% url 'tasks:task_detail' task.pk %}" class="list-group-item list-group-item-action p-4 border-start-0 border-end-0">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1 fw-bold">{{ task.title }}</h5>
-                                <small class="text-muted">{{ task.created_at|date:"Y-m-d" }}</small>
-                            </div>
-                            <p class="mb-1">
-                                <span class="badge bg-warning text-dark me-2">🪙 {{ task.bounty }}</span>
-                                {% if task.status == 'open' %}
-                                    <span class="badge bg-success">招募中</span>
-                                {% elif task.status == 'in_progress' %}
-                                    <span class="badge bg-primary">进行中</span>
-                                {% elif task.status == 'closed' %}
-                                    <span class="badge bg-secondary">已结束</span>
-                                {% endif %}
-                            </p>
-                            <small class="text-muted">参与人数: {{ task.participants.count }}</small>
-                        </a>
-                    {% empty %}
-                        <div class="text-center py-5 text-muted">你还没有发布过任务</div>
-                    {% endfor %}
-                </div>
-                <div class="mt-3">
-                    <a href="{% url 'tasks:task_create' %}" class="btn btn-primary rounded-pill">+ 发布新任务</a>
-                </div>
+    <div class="col-lg-10">
+        
+        <div class="task-hero mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold mb-1">📋 任务管理中心</h2>
+                <p class="mb-0 opacity-90">发布悬赏、参与挑战、协作共赢。</p>
             </div>
-
-            <div class="tab-pane fade" id="my-joined">
-                <div class="list-group shadow-sm">
-                    {% for record in my_participations %}
-                        <a href="{% url 'tasks:task_detail' record.task.pk %}" class="list-group-item list-group-item-action p-4 border-start-0 border-end-0">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1 fw-bold">{{ record.task.title }}</h5>
-                                <small class="text-muted font-monospace">
-                                    {% if record.task.status == 'closed' %}
-                                        🏁 已结束
-                                    {% elif record.task.is_overdue %}
-                                        🛑 已截止
-                                    {% else %}
-                                        <span class="countdown-timer" data-deadline="{{ record.task.deadline|date:'c' }}">⏳</span>
-                                    {% endif %}
-                                </small>
-                            </div>
-                            <p class="mb-1">
-                                状态: 
-                                {% if record.status == 'invited' %}
-                                    <span class="badge bg-info">📩 待接受</span>
-                                {% elif record.status == 'accepted' %}
-                                    <span class="badge bg-success">✅ 进行中</span>
-                                {% endif %}
-                                <span class="ms-2">发布人: {{ record.task.creator.nickname }}</span>
-                            </p>
-                        </a>
-                    {% empty %}
-                        <div class="text-center py-5 text-muted">暂无参与的任务</div>
-                    {% endfor %}
-                </div>
+            <div class="d-none d-md-block">
+                <a href="{% url 'tasks:task_create' %}" class="btn btn-light text-warning fw-bold rounded-pill px-4 shadow-sm">
+                    <i class="bi bi-plus-lg me-1"></i> 发布新任务
+                </a>
             </div>
         </div>
+
+        <div class="d-md-none mb-3">
+            <a href="{% url 'tasks:task_create' %}" class="btn btn-warning text-white w-100 fw-bold rounded-pill shadow-sm">
+                + 发布新任务
+            </a>
+        </div>
+
+        <div class="d-flex justify-content-center mb-4">
+            <div class="nav-pills-wrapper">
+                <ul class="nav nav-pills nav-pills-task" id="taskTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="published-tab" data-bs-toggle="tab" data-bs-target="#my-published" type="button">
+                            📤 我发布的
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="joined-tab" data-bs-toggle="tab" data-bs-target="#my-joined" type="button">
+                            📥 我参与的
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tab-content" id="taskTabsContent">
+            
+            <div class="tab-pane fade show active" id="my-published" role="tabpanel">
+                <div class="d-flex flex-column">
+                    {% for task in created_tasks %}
+                        <a href="{% url 'tasks:task_detail' task.pk %}" class="text-decoration-none">
+                            <div class="card task-card p-3">
+                                <div class="row align-items-center">
+                                    
+                                    <div class="col-md-7 mb-2 mb-md-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3 flex-shrink-0">
+                                                {% if task.task_type == 'faculty' %}
+                                                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                                                        <i class="bi bi-megaphone-fill"></i>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                                                        <i class="bi bi-trophy-fill"></i>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="min-width-0">
+                                                <h5 class="fw-bold text-dark mb-1 text-truncate">{{ task.title }}</h5>
+                                                <div class="text-muted small">
+                                                    <i class="bi bi-clock"></i> 发布于 {{ task.created_at|date:"Y-m-d" }}
+                                                    <span class="mx-2">|</span>
+                                                    <i class="bi bi-people"></i> {{ task.participants.count }} 人参与
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-5 text-md-end">
+                                        <div class="d-flex flex-md-column align-items-center align-items-md-end justify-content-between h-100">
+                                            
+                                            <div class="mb-md-2">
+                                                {% if task.task_type == 'faculty' %}
+                                                    <span class="faculty-tag me-2">导师指令</span>
+                                                {% else %}
+                                                    <span class="bounty-tag me-2">🪙 {{ task.bounty }}</span>
+                                                {% endif %}
+                                                
+                                                {% if task.status == 'open' %}
+                                                    <span class="status-badge bg-success bg-opacity-10 text-success border border-success">招募中</span>
+                                                {% elif task.status == 'in_progress' %}
+                                                    <span class="status-badge bg-primary bg-opacity-10 text-primary border border-primary">进行中</span>
+                                                {% elif task.status == 'closed' %}
+                                                    <span class="status-badge bg-secondary bg-opacity-10 text-secondary border border-secondary">已结束</span>
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="small text-muted d-none d-md-block">
+                                                {% if task.status == 'closed' %}
+                                                    获胜者: <span class="fw-bold text-dark">{{ task.winner.nickname|default:"无" }}</span>
+                                                {% else %}
+                                                    点击管理任务 &raquo;
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </a>
+                    {% empty %}
+                        <div class="text-center py-5">
+                            <div class="display-1 mb-3 opacity-25">📤</div>
+                            <h4 class="text-muted">你还没有发布过任务</h4>
+                            <p class="text-secondary mb-4">有困难需要帮助？或者想给师弟师妹派活？</p>
+                            <a href="{% url 'tasks:task_create' %}" class="btn btn-warning text-white rounded-pill px-4 shadow-sm fw-bold">立即发布</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="my-joined" role="tabpanel">
+                <div class="d-flex flex-column">
+                    {% for record in my_participations %}
+                        <a href="{% url 'tasks:task_detail' record.task.pk %}" class="text-decoration-none">
+                            <div class="card task-card p-3">
+                                <div class="row align-items-center">
+                                    
+                                    <div class="col-md-7 mb-2 mb-md-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3 flex-shrink-0">
+                                                {% if record.task.creator.avatar %}
+                                                    <img src="{{ record.task.creator.avatar.url }}" class="rounded-circle border" width="50" height="50" style="object-fit:cover;">
+                                                {% else %}
+                                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:50px; height:50px;">
+                                                        {{ record.task.creator.username.0|upper }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="min-width-0">
+                                                <h5 class="fw-bold text-dark mb-1 text-truncate">{{ record.task.title }}</h5>
+                                                <div class="small text-secondary">
+                                                    <span class="fw-bold">{{ record.task.creator.nickname }}</span> 发布
+                                                    {% if record.task.task_type == 'faculty' %}
+                                                        <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.6rem;">必修</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-5 text-md-end">
+                                        <div class="d-flex flex-md-column align-items-center align-items-md-end justify-content-between h-100">
+                                            
+                                            <div class="mb-md-2 font-monospace small">
+                                                {% if record.task.status == 'closed' %}
+                                                    <span class="text-muted">🏁 任务已结束</span>
+                                                {% elif record.task.is_overdue %}
+                                                    <span class="text-secondary fw-bold">🛑 已截止</span>
+                                                {% else %}
+                                                    <span class="countdown-timer text-danger fw-bold bg-danger bg-opacity-10 px-2 py-1 rounded" 
+                                                          data-deadline="{{ record.task.deadline|date:'c' }}">
+                                                        计算中...
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+
+                                            <div>
+                                                {% if record.status == 'invited' %}
+                                                    <span class="badge bg-info text-dark border">📩 邀请函</span>
+                                                {% elif record.status == 'accepted' %}
+                                                    <span class="badge bg-success border border-success">✅ 进行中</span>
+                                                {% elif record.status == 'rejected' %}
+                                                    <span class="badge bg-secondary border">🚫 已拒绝</span>
+                                                {% elif record.status == 'quit' %}
+                                                    <span class="badge bg-dark border">🏳️ 已退出</span>
+                                                {% endif %}
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </a>
+                    {% empty %}
+                        <div class="text-center py-5">
+                            <div class="display-1 mb-3 opacity-25">📥</div>
+                            <h4 class="text-muted">暂无参与的任务</h4>
+                            <p class="text-secondary">去“大厅”看看有没有最新的悬赏吧！</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
     </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const timers = document.querySelectorAll('.countdown-timer');
-    
-    function updateTimers() {
-        timers.forEach(timer => {
-            const deadline = new Date(timer.dataset.deadline).getTime();
-            const now = new Date().getTime();
-            const distance = deadline - now;
-            
-            if (distance < 0) {
-                timer.innerHTML = '🛑 已截止';
-                return;
-            }
-            
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            
-            let timeStr = '';
-            if (days > 0) timeStr += `${days}d`;
-            timeStr += `${hours}h${minutes}m${seconds}s`;
-            timer.innerHTML = '⏳ ' + timeStr;
-        });
-    }
-    
-    if (timers.length > 0) {
-        setInterval(updateTimers, 1000);
-        updateTimers();
-    }
-});
+    document.addEventListener("DOMContentLoaded", function() {
+        const timers = document.querySelectorAll('.countdown-timer');
+        
+        function updateTimers() {
+            timers.forEach(timer => {
+                const deadline = new Date(timer.dataset.deadline).getTime();
+                const now = new Date().getTime();
+                const distance = deadline - now;
+                
+                if (distance < 0) {
+                    timer.innerHTML = '🛑 已截止';
+                    timer.className = 'text-secondary fw-bold';
+                    return;
+                }
+                
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                
+                let timeStr = '⏳ 剩余: ';
+                if (days > 0) timeStr += `${days}天 `;
+                timeStr += `${hours}时${minutes}分`;
+                
+                timer.innerHTML = timeStr;
+            });
+        }
+        
+        if (timers.length > 0) {
+            setInterval(updateTimers, 60000); // 列表页每分钟更新一次即可
+            updateTimers();
+        }
+    });
 </script>
 {% endblock %}

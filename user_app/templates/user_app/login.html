@@ -2,91 +2,181 @@
 
 {% block title %}登录实验室{% endblock %}
 
+{# 🔥 登录页不需要侧边栏，覆盖为空 #}
 {% block sidebar %}{% endblock %}
 
 {% block content_container %}
 <div class="col-12">
     {% block content %}
-    <div class="container" style="margin-top: 60px; margin-bottom: 60px;">
-        <div class="row justify-content-center align-items-center">
+    <style>
+        /* === 登录页专用样式 === */
+        
+        /* 1. 背景容器 */
+        .login-wrapper {
+            min-height: 80vh; /* 保证在各种屏幕都有足够高度 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa; /* 浅灰背景，衬托卡片 */
+        }
+
+        /* 2. 主卡片 (双栏一体) */
+        .login-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden; /* 保证圆角 */
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        /* 3. 左侧品牌区 */
+        .login-brand-side {
+            background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%);
+            color: white;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        /* 装饰背景圆圈 */
+        .login-brand-side::before {
+            content: "";
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+        .login-brand-side::after {
+            content: "";
+            position: absolute;
+            bottom: -50px;
+            left: -50px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        /* 4. 右侧表单区 */
+        .login-form-side {
+            padding: 3rem;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 特性列表项 */
+        .feature-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.2s;
+        }
+        .feature-item:hover {
+            transform: translateX(5px);
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .login-brand-side { display: none; } /* 手机端隐藏左侧 */
+            .login-card { max-width: 400px; }
+            .login-form-side { padding: 2rem; }
+        }
+    </style>
+
+    <div class="login-wrapper py-5">
+        <div class="login-card">
             
-            <div class="col-md-5 d-none d-md-block pe-5">
-                <div class="text-start">
-                    <h1 class="display-4 fw-bold text-primary mb-3">Welcome Back!</h1>
-                    <p class="lead text-secondary mb-4">
-                        回到 Web 218 实验室，继续探索技术的边界，与伙伴们分享你的最新发现。
-                    </p>
-                    
-                    <div class="d-flex align-items-center mb-3 text-muted">
-                        <span class="fs-4 me-3">🔬</span>
-                        <span>探索 GitHub 开源趋势</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-3 text-muted">
-                        <span class="fs-4 me-3">💬</span>
-                        <span>参与深度的技术讨论</span>
-                    </div>
-                    <div class="d-flex align-items-center text-muted">
-                        <span class="fs-4 me-3">🤝</span>
-                        <span>结识志同道合的伙伴</span>
-                    </div>
+            <div class="col-md-5 login-brand-side">
+                <h2 class="fw-bold mb-4">Web 218 Laboratory</h2>
+                <p class="opacity-75 mb-5">
+                    探索技术的边界，与伙伴们分享你的最新发现。加入我们，开启科研协作新篇章。
+                </p>
+
+                <div class="feature-item d-flex align-items-center">
+                    <span class="fs-4 me-3">🔬</span>
+                    <span>探索 GitHub 开源趋势</span>
+                </div>
+                <div class="feature-item d-flex align-items-center">
+                    <span class="fs-4 me-3">💬</span>
+                    <span>参与深度的技术讨论</span>
+                </div>
+                <div class="feature-item d-flex align-items-center">
+                    <span class="fs-4 me-3">🤝</span>
+                    <span>结识志同道合的伙伴</span>
                 </div>
             </div>
 
-            <div class="col-md-5">
-                <div class="card shadow-lg border-0 rounded-4">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <h3 class="fw-bold">🔐 登录账号</h3>
-                            <p class="text-muted small">请输入您的凭证以访问实验室</p>
+            <div class="col-md-7 login-form-side">
+                
+                <div class="text-center mb-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-person-lock fs-3"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark">欢迎回来</h3>
+                    <p class="text-muted small">请输入您的账号凭证以继续</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center rounded-3 mb-4" role="alert">
+                        <i class="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
                         </div>
-
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger d-flex align-items-center" role="alert">
-                                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Danger:"><use xlink:href="#exclamation-triangle-fill"/></svg>
-                                <div>
-                                    {% for error in form.non_field_errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        <form method="post">
-                            {% csrf_token %}
-                            
-                            <div class="form-floating mb-3">
-                                <input type="text" name="username" class="form-control bg-light border-0" id="id_username" placeholder="用户名/邮箱" required>
-                                <label for="id_username">用户名 / 电子邮箱</label>
-                            </div>
-
-                            <div class="form-floating mb-3">
-                                <input type="password" name="password" class="form-control bg-light border-0" id="id_password" placeholder="密码" required>
-                                <label for="id_password">密码</label>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="rememberMe">
-                                    <label class="form-check-label small text-muted" for="rememberMe">
-                                        记住我
-                                    </label>
-                                </div>
-                                <a href="{% url 'user_app:password_reset' %}" class="text-decoration-none small">忘记密码？</a>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">
-                                    立即登录
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                    <div class="card-footer bg-white border-top-0 text-center py-3 rounded-bottom-4">
-                        <small class="text-muted">还没有账号？</small>
-                        <a href="{% url 'user_app:register' %}" class="fw-bold text-decoration-none ms-1">申请加入</a>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-floating mb-3">
+                        <input type="text" name="username" class="form-control bg-light border-0" id="id_username" placeholder="用户名/邮箱" required>
+                        <label for="id_username"><i class="bi bi-person me-1"></i> 用户名 / 电子邮箱</label>
                     </div>
-                </div>
+
+                    <div class="form-floating mb-3">
+                        <input type="password" name="password" class="form-control bg-light border-0" id="id_password" placeholder="密码" required>
+                        <label for="id_password"><i class="bi bi-key me-1"></i> 密码</label>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label small text-muted" for="rememberMe">
+                                记住我
+                            </label>
+                        </div>
+                        <a href="{% url 'user_app:password_reset' %}" class="text-decoration-none small fw-bold">忘记密码？</a>
+                    </div>
+
+                    <div class="d-grid gap-2 mb-4">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm fw-bold">
+                            立即登录 <i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+
+                    <div class="text-center small text-muted">
+                        还没有账号？ 
+                        <a href="{% url 'user_app:register' %}" class="fw-bold text-decoration-none text-primary">立即注册申请</a>
+                    </div>
+                </form>
             </div>
+
         </div>
     </div>
     {% endblock %}

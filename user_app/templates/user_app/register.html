@@ -2,115 +2,223 @@
 
 {% block title %}注册账号{% endblock %}
 
+{# 🔥 1. 隐藏侧边栏 #}
 {% block sidebar %}{% endblock %}
 
+{# 🔥 2. 使用 col-12 占满全宽 #}
 {% block content_container %}
 <div class="col-12">
     {% block content %}
-    <div class="container" style="margin-top: 60px; margin-bottom: 60px;">
-        <div class="row justify-content-center align-items-center flex-row-reverse">
+    <style>
+        /* === 注册页美化样式 (仅涉及外观，不改结构) === */
+        
+        /* 背景容器 */
+        .register-wrapper {
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            padding: 40px 0;
+        }
+
+        /* 主卡片 */
+        .register-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 1000px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        /* 左侧品牌区 (绿色系) */
+        .register-brand-side {
+            background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+            color: white;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        /* 背景装饰 */
+        .register-brand-side::before {
+            content: ""; position: absolute; top: -50px; left: -50px; width: 200px; height: 200px;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+        }
+        .register-brand-side::after {
+            content: ""; position: absolute; bottom: -50px; right: -50px; width: 150px; height: 150px;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+        }
+
+        /* 右侧表单区 */
+        .register-form-side {
+            padding: 3rem;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 左侧特性卡片美化 */
+        .feature-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: white;
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateX(5px);
+            background: rgba(255,255,255,0.25);
+        }
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .register-brand-side { display: none; }
+            .register-form-side { padding: 2rem; }
+        }
+    </style>
+
+    <div class="register-wrapper">
+        <div class="register-card">
             
-            <div class="col-md-5 d-none d-md-block ps-5">
-                <div class="text-start">
-                    <h1 class="display-4 fw-bold text-success mb-3">Join Us!</h1>
-                    <p class="lead text-secondary mb-4">
-                        成为 Web 218 实验室的一员。
-                    </p>
+            <div class="col-md-5 register-brand-side">
+                <h1 class="display-4 fw-bold mb-3">Join Us!</h1>
+                <p class="lead mb-5 opacity-90">
+                    成为 Web 218 实验室的一员。
+                </p>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <div>
+                        <h6 class="fw-bold mb-0">快速成长</h6>
+                        <small class="opacity-75">获取最新前沿资讯</small>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <div>
+                        <h6 class="fw-bold mb-0">安全隐私</h6>
+                        <small class="opacity-75">我们要先验证邮箱才能加入哦</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7 register-form-side">
+                
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold text-success">📝 创建新账号</h3>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
                     
-                    <div class="card border-0 bg-white shadow-sm mb-3">
-                        <div class="card-body d-flex align-items-center">
-                            <div class="bg-light p-2 rounded-circle me-3">🚀</div>
-                            <div>
-                                <h6 class="fw-bold mb-0">快速成长</h6>
-                                <small class="text-muted">获取最新前沿资讯</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card border-0 bg-white shadow-sm">
-                        <div class="card-body d-flex align-items-center">
-                            <div class="bg-light p-2 rounded-circle me-3">🛡️</div>
-                            <div>
-                                <h6 class="fw-bold mb-0">安全隐私</h6>
-                                <small class="text-muted">我们要先验证邮箱才能加入哦</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-5">
-                <div class="card shadow-lg border-0 rounded-4">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <h3 class="fw-bold">📝 创建新账号</h3>
-                        </div>
-
-                        <form method="post">
-                            {% csrf_token %}
-                            
-                            {% if form.errors %}
-                                <div class="alert alert-danger small">
-                                    {{ form.non_field_errors }}
-                                    {% for field in form %}
-                                        {% if field.errors %}
-                                            <div>{{ field.label }}: {{ field.errors.0 }}</div>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-
+                    {% if form.errors %}
+                        <div class="alert alert-danger small border-0 shadow-sm rounded-3">
+                            {{ form.non_field_errors }}
                             {% for field in form %}
-                                <div class="form-floating mb-3" id="div_{{ field.name }}" 
-                                     style="{% if field.name == 'student_id' %}display:none;{% endif %}">
-                                    
-                                    {{ field }}
-                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                    
-                                    {% if field.help_text %}
-                                        <div class="form-text small ms-1">{{ field.help_text }}</div>
-                                    {% endif %}
-                                </div>
+                                {% if field.errors %}
+                                    <div><strong>{{ field.label }}:</strong> {{ field.errors.0 }}</div>
+                                {% endif %}
                             {% endfor %}
+                        </div>
+                    {% endif %}
 
-                            <div class="d-grid gap-2 mt-4">
-                                <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm">
-                                    立即注册
-                                </button>
-                            </div>
-                        </form>
+                    {% for field in form %}
+                        <div class="form-floating mb-3" id="div_{{ field.name }}" 
+                             style="{% if field.name == 'student_id' %}display:none;{% endif %}">
+                            
+                            {# 🔥 关键点：直接使用 {{ field }}，不手写 input，防止双重输入框 #}
+                            {# 后续通过 JS 自动给它加上 class="form-control" 以适配样式 #}
+                            {{ field }}
+                            
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            
+                            {% if field.help_text %}
+                                <div class="form-text small ms-1">{{ field.help_text }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="d-grid gap-2 mt-4 mb-4">
+                        <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm fw-bold">
+                            立即注册
+                        </button>
                     </div>
-                    <div class="card-footer bg-white border-top-0 text-center py-3 rounded-bottom-4">
-                        <small class="text-muted">已有账号？</small>
-                        <a href="{% url 'user_app:login' %}" class="fw-bold text-decoration-none ms-1">直接登录</a>
+
+                    <div class="text-center small text-muted">
+                        已有账号？ 
+                        <a href="{% url 'user_app:login' %}" class="fw-bold text-decoration-none text-success">直接登录</a>
                     </div>
-                </div>
+                </form>
             </div>
+
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // === 1. 样式补丁 ===
+            // 自动给 Django 生成的 input/select 添加 Bootstrap 类，
+            // 这样既保留了 {{ field }} 的原始逻辑，又能拥有 form-floating 的漂亮样式
+            const inputs = document.querySelectorAll('.register-form-side input, .register-form-side select');
+            inputs.forEach(el => {
+                el.classList.add('form-control');
+                el.classList.add('bg-light'); // 增加浅灰背景
+                el.classList.add('border-0'); // 去掉默认边框
+                
+                // form-floating 需要 placeholder 才能工作 (虽然视觉上可能不显示)
+                if (!el.getAttribute('placeholder')) {
+                    el.setAttribute('placeholder', 'Input');
+                }
+            });
+
+            // === 2. 你的原始业务逻辑 (保留) ===
             const statusSelect = document.getElementById('id_status');
             const studentIdDiv = document.getElementById('div_student_id');
             const studentIdInput = document.getElementById('id_student_id');
 
             function toggleStudentId() {
-                if (statusSelect.value === 'student') {
+                if (statusSelect && statusSelect.value === 'student') {
                     studentIdDiv.style.display = 'block';
+                    // 加一点点淡入动画
                     studentIdDiv.style.opacity = 0;
-                    setTimeout(() => studentIdDiv.style.opacity = 1, 50);
                     studentIdDiv.style.transition = 'opacity 0.3s';
-                    studentIdInput.required = true; 
+                    setTimeout(() => studentIdDiv.style.opacity = 1, 50);
+                    
+                    if(studentIdInput) studentIdInput.required = true; 
                 } else {
-                    studentIdDiv.style.display = 'none';
-                    studentIdInput.value = ''; 
-                    studentIdInput.required = false;
+                    if(studentIdDiv) studentIdDiv.style.display = 'none';
+                    if(studentIdInput) {
+                        studentIdInput.value = ''; 
+                        studentIdInput.required = false;
+                    }
                 }
             }
 
-            toggleStudentId();
-            statusSelect.addEventListener('change', toggleStudentId);
+            if(statusSelect) {
+                toggleStudentId();
+                statusSelect.addEventListener('change', toggleStudentId);
+            }
         });
     </script>
     {% endblock %}

@@ -3,55 +3,170 @@
 {% block title %}{{ title }} - 218 社区{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="javascript:history.back()">返回上一页</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
-            </ol>
-        </nav>
+<style>
+    /* === 用户列表页专用样式 === */
 
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">{{ title }} <span class="badge bg-light text-dark">{{ user_list.count }}</span></h5>
-            </div>
+    /* 1. 页面头部 */
+    .page-header-box {
+        background: #fff;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        border: 1px solid #f0f0f0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* 2. 用户卡片 */
+    .user-card-item {
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        padding: 1.2rem;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    .user-card-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        border-color: #e9ecef;
+        z-index: 2;
+    }
+
+    /* 3. 头像容器 */
+    .avatar-box {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+        margin-right: 1rem;
+        position: relative;
+    }
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    /* 4. 身份标签 */
+    .role-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+        vertical-align: middle;
+        font-weight: normal;
+    }
+
+    /* 5. 简介文本 */
+    .bio-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+        display: -webkit-box;
+        -webkit-line-clamp: 1; /* 只显示一行，多了省略 */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+
+    /* 6. 查看按钮 */
+    .view-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+        transform: translateX(10px);
+    }
+    .user-card-item:hover .view-btn {
+        opacity: 1;
+        transform: translateX(0);
+    }
+</style>
+
+<div class="container-xl py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
             
-            <div class="list-group list-group-flush">
+            <div class="page-header-box">
+                <div class="d-flex align-items-center">
+                    <a href="javascript:history.back()" class="btn btn-light rounded-circle shadow-sm me-3 border" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                    <div>
+                        <h4 class="fw-bold mb-0 text-dark">{{ title }}</h4>
+                        <div class="text-muted small mt-1">
+                            共 <span class="fw-bold text-primary">{{ user_list.count }}</span> 位用户
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column gap-3">
                 {% for list_user in user_list %}
-                <div class="list-group-item d-flex align-items-center py-3">
-                    <a href="{% url 'user_app:public_profile' list_user.pk %}" class="flex-shrink-0">
+                <div class="user-card-item">
+                    <a href="{% url 'user_app:public_profile' list_user.pk %}" class="stretched-link"></a>
+
+                    <div class="avatar-box">
                         {% if list_user.avatar %}
-                            <img src="{{ list_user.avatar.url }}" class="rounded-circle border" width="50" height="50" style="object-fit: cover;">
+                            <img src="{{ list_user.avatar.url }}" class="avatar-img">
                         {% else %}
-                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            <div class="avatar-img bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-4">
                                 {{ list_user.username.0|upper }}
                             </div>
                         {% endif %}
-                    </a>
+                    </div>
 
-                    <div class="flex-grow-1 ms-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{% url 'user_app:public_profile' list_user.pk %}" class="text-decoration-none text-dark fw-bold fs-5 stretched-link">
+                    <div class="flex-grow-1 min-width-0 pe-3">
+                        <div class="d-flex align-items-center">
+                            <h6 class="mb-0 fw-bold text-dark text-truncate">
                                 {{ list_user.nickname|default:list_user.username }}
-                            </a>
+                            </h6>
                             
                             {% if request.user == list_user %}
-                                <span class="badge bg-secondary">我自己</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle role-badge">我</span>
+                            {% endif %}
+                            
+                            {% if list_user.status == 'faculty' %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle role-badge">导师</span>
+                            {% elif list_user.status == 'student' %}
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle role-badge">学生</span>
                             {% endif %}
                         </div>
-                        <p class="mb-0 text-muted small text-truncate" style="max-width: 300px;">
-                            {{ list_user.bio|default:"这个人很懒，没有写简介。" }}
+                        
+                        <p class="bio-text mb-0">
+                            {{ list_user.bio|default:"暂无简介" }}
                         </p>
                     </div>
+
+                    <div class="view-btn d-none d-md-block">
+                        <span class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            查看主页 <i class="bi bi-arrow-right"></i>
+                        </span>
+                    </div>
+                    <div class="d-md-none text-muted">
+                        <i class="bi bi-chevron-right"></i>
+                    </div>
+
                 </div>
                 {% empty %}
-                <div class="text-center py-5 text-muted">
-                    <div class="fs-1 mb-2">🍃</div>
-                    <p>列表空空如也</p>
+                <div class="text-center py-5 bg-white rounded-3 border border-light shadow-sm mt-3">
+                    <div class="display-1 mb-3 opacity-25">🍃</div>
+                    <h5 class="text-muted fw-bold">列表空空如也</h5>
+                    <p class="text-secondary small mb-0">这里暂时还没有用户。</p>
                 </div>
                 {% endfor %}
             </div>
+
+            {% if user_list %}
+            <div class="text-center mt-4 text-muted small opacity-50">
+                - 已显示全部内容 -
+            </div>
+            {% endif %}
+
         </div>
     </div>
 </div>

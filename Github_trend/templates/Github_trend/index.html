@@ -1,99 +1,216 @@
 {% extends 'base.html' %}
 
-{% block title %}GitHub 趋势 - 第 {{ current_page }} 页{% endblock %}
+{% block title %}GitHub 趋势 - 发现开源的力量{% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-end">
-    <div class="col-md-6">
-        <h2>🔥 开源热榜</h2>
-        <p class="text-muted small mb-0">发现 GitHub 上最受关注的项目</p>
-    </div>
-    
-    <div class="col-md-6">
-        <form method="get" class="row g-2 justify-content-md-end">
-            <div class="col-auto">
-                <select name="lang" class="form-select" onchange="this.form.submit()">
-                    {% for lang in language_options %}
-                        <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>
-                            {{ lang|title }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+<style>
+    /* === 趋势页专用样式 === */
 
-            <div class="col-auto">
-                <select name="period" class="form-select" onchange="this.form.submit()">
-                    <option value="daily" {% if current_period == 'daily' %}selected{% endif %}>今日最热</option>
-                    <option value="weekly" {% if current_period == 'weekly' %}selected{% endif %}>本周最热</option>
-                    <option value="monthly" {% if current_period == 'monthly' %}selected{% endif %}>本月最热</option>
-                </select>
-            </div>
-            
-            </form>
+    /* 1. 顶部 Hero Banner (纯展示) */
+    .trend-hero {
+        background: linear-gradient(135deg, #24292e 0%, #2b3137 100%);
+        border-radius: 1rem;
+        padding: 3rem 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden; /* 仅裁切背景装饰，不包含交互元素 */
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
+    .trend-hero::after {
+        content: "\f34c"; /* Bootstrap Icons: github */
+        font-family: bootstrap-icons !important;
+        position: absolute;
+        top: -20px;
+        right: 20px;
+        font-size: 12rem;
+        opacity: 0.1;
+        transform: rotate(15deg);
+        pointer-events: none;
+    }
+
+    /* 2. 独立筛选工具栏 (关键修复) */
+    .trend-toolbar {
+        background: white;
+        padding: 1rem;
+        border-radius: 0.8rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    /* 筛选下拉框美化 */
+    .form-select-trend {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 50rem;
+        padding: 0.5rem 2rem 0.5rem 1rem;
+        font-weight: 600;
+        color: #495057;
+        cursor: pointer;
+        min-width: 140px;
+        background-position: right 0.75rem center; /* 调整箭头位置 */
+    }
+    .form-select-trend:hover {
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+    }
+    .form-select-trend:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+        border-color: #0d6efd;
+    }
+
+    /* 3. 仓库卡片 */
+    .repo-card {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border: 1px solid rgba(0,0,0,0.05);
+        background: white;
+        border-radius: 12px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .repo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 2rem rgba(0,0,0,0.08) !important;
+        border-color: rgba(13, 110, 253, 0.2);
+    }
+
+    /* 描述文字截断 (最多3行) */
+    .repo-desc {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 4.5em; 
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    /* 语言圆点 */
+    .lang-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+</style>
+
+<div class="trend-hero animate__animated animate__fadeIn">
+    <div class="position-relative" style="z-index: 1;">
+        <h1 class="fw-bold display-5 mb-2">🔥 GitHub 开源热榜</h1>
+        <p class="lead mb-0 opacity-75 fs-6" style="max-width: 600px;">
+            实时追踪全球开发者的关注焦点，发现下一个独角兽项目。
+        </p>
     </div>
 </div>
 
-<div class="row">
+<div class="trend-toolbar mb-4 animate__animated animate__fadeInUp">
+    <div class="d-flex align-items-center text-secondary">
+        <i class="bi bi-funnel-fill text-primary me-2"></i>
+        <span class="fw-bold">筛选条件</span>
+    </div>
+
+    <form method="get" class="d-flex align-items-center gap-3 m-0 flex-wrap">
+        <div class="d-flex align-items-center">
+            <select name="lang" class="form-select form-select-trend" onchange="this.form.submit()">
+                {% for lang in language_options %}
+                    <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>
+                        {{ lang|title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="d-flex align-items-center">
+            <select name="period" class="form-select form-select-trend" onchange="this.form.submit()">
+                <option value="daily" {% if current_period == 'daily' %}selected{% endif %}>📅 今日热门</option>
+                <option value="weekly" {% if current_period == 'weekly' %}selected{% endif %}>📅 本周热门</option>
+                <option value="monthly" {% if current_period == 'monthly' %}selected{% endif %}>📅 本月热门</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="row g-4">
     {% for repo in repos %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100 shadow-sm hover-effect">
-            <div class="card-body">
+    <div class="col-md-6 col-lg-4 animate__animated animate__fadeInUp" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+        <div class="card repo-card shadow-sm border-0">
+            <div class="card-body p-4 d-flex flex-column">
+                
                 <div class="d-flex align-items-center mb-3">
-                    <img src="{{ repo.avatar }}" class="rounded-circle me-2 border" width="45" height="45">
-                    <div style="overflow: hidden;">
-                        <h6 class="card-title text-truncate mb-0" title="{{ repo.full_name }}">
-                            <a href="{{ repo.url }}" target="_blank" class="text-decoration-none text-dark">{{ repo.name }}</a>
+                    <img src="{{ repo.avatar }}" class="rounded-circle border me-3" width="48" height="48" alt="Owner Avatar" style="object-fit: cover;">
+                    <div class="overflow-hidden">
+                        <h6 class="fw-bold mb-0 text-truncate text-primary" title="{{ repo.full_name }}">
+                            <a href="{{ repo.url }}" target="_blank" class="text-decoration-none text-dark stretched-link">
+                                {{ repo.name }}
+                            </a>
                         </h6>
-                        <small class="text-muted">{{ repo.updated_at }}</small>
+                        <small class="text-muted">{{ repo.updated_at }} 更新</small>
                     </div>
                 </div>
-                
-                <div class="mb-3">
-                    <span class="badge bg-warning text-dark">⭐ {{ repo.stars }}</span>
-                    <span class="badge bg-light text-dark border ms-1">{{ repo.language|default:"Unknown" }}</span>
-                </div>
-                
-                <p class="card-text small text-secondary" style="height: 60px; overflow: hidden;">
-                    {{ repo.description|default:"暂无描述"|truncatechars:80 }}
+
+                <p class="repo-desc mb-4 flex-grow-1">
+                    {{ repo.description|default:"暂无描述" }}
                 </p>
-            </div>
-            <div class="card-footer bg-white border-top-0">
-                <a href="{{ repo.url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">查看源码</a>
+
+                <div class="d-flex align-items-center justify-content-between pt-3 border-top mt-auto">
+                    <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center me-3 text-warning fw-bold" title="Stars">
+                            <i class="bi bi-star-fill me-1"></i> {{ repo.stars }}
+                        </div>
+                        <div class="d-flex align-items-center text-muted small" title="Language">
+                            <span class="lang-dot bg-primary"></span>
+                            {{ repo.language|default:"Unknown" }}
+                        </div>
+                    </div>
+                    
+                    <a href="{{ repo.url }}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-3 position-relative" style="z-index: 2;">
+                        View <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
     {% empty %}
     <div class="col-12 text-center py-5">
-        <div class="alert alert-warning">
-            <h4>🤔 暂无数据</h4>
-            <p>没有找到符合条件的项目，或者 GitHub API 请求超时。</p>
-            <a href="?lang=python&period=weekly" class="btn btn-primary mt-2">重置筛选</a>
-        </div>
+        <div class="display-1 mb-3 opacity-25">🦖</div>
+        <h4 class="text-muted">哎呀，网络好像开小差了</h4>
+        <p class="text-secondary">无法获取 GitHub 数据，请稍后再试或检查服务器网络。</p>
+        <a href="?lang=python&period=weekly" class="btn btn-primary rounded-pill px-4 mt-2">重置筛选</a>
     </div>
     {% endfor %}
 </div>
 
-<nav aria-label="Page navigation" class="mt-4 mb-5">
-  <ul class="pagination justify-content-center">
-    {% if prev_page %}
-    <li class="page-item">
-      <a class="page-link" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ prev_page }}">
-        &laquo; 上一页
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link">&laquo; 上一页</span></li>
-    {% endif %}
+<nav aria-label="Page navigation" class="mt-5 mb-5">
+   <ul class="pagination justify-content-center">
+      {% if prev_page %}
+      <li class="page-item">
+        <a class="page-link rounded-start-pill border-0 shadow-sm mx-1 fw-bold" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ prev_page }}">
+          &laquo; 上一页
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link border-0 mx-1 bg-transparent text-muted">&laquo; 上一页</span></li>
+      {% endif %}
 
-    <li class="page-item active">
-        <span class="page-link">第 {{ current_page }} 页</span>
-    </li>
+      <li class="page-item active">
+          <span class="page-link border-0 mx-1 rounded-pill shadow-sm bg-dark border-dark">第 {{ current_page }} 页</span>
+      </li>
 
-    <li class="page-item">
-      <a class="page-link" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ next_page }}">
-        下一页 &raquo;
-      </a>
-    </li>
-  </ul>
+      <li class="page-item">
+        <a class="page-link rounded-end-pill border-0 shadow-sm mx-1 fw-bold" href="?lang={{ current_lang }}&period={{ current_period }}&page={{ next_page }}">
+          下一页 &raquo;
+        </a>
+      </li>
+   </ul>
 </nav>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 {% endblock %}

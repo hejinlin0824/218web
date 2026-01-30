@@ -7,146 +7,210 @@
 <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
 
 <style>
-    /* 美化复选框列表 */
-    .user-select-container {
-        max-height: 250px;
-        overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
+    /* === 任务发布页专用样式 === */
+
+    /* 1. 整体布局 */
+    .form-section {
         background: #fff;
-        padding: 10px;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
-    
-    .user-option-card {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 6px;
-        padding: 6px 10px;
-        margin-bottom: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #495057;
+        margin-bottom: 15px;
         display: flex;
         align-items: center;
-        font-size: 0.9rem;
+        gap: 8px;
     }
-    
-    .user-option-card:hover {
-        border-color: #0d6efd;
-        background-color: #f0f7ff;
+
+    /* 2. 人员选择器 (Grid Card) */
+    .user-select-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+        max-height: 250px;
+        overflow-y: auto;
+        padding: 5px;
     }
     
     /* 隐藏原生 checkbox */
-    .user-option-card input[type="checkbox"] {
-        width: 1.1em;
-        height: 1.1em;
-        margin-right: 8px;
+    .user-select-card input[type="checkbox"] {
+        display: none;
+    }
+    
+    .user-select-card {
+        display: block;
         cursor: pointer;
+        position: relative;
     }
 
-    /* 班级选择卡片高亮 */
-    .class-selector-card {
-        background-color: #f8f9fa;
-        border-left: 4px solid #0d6efd;
+    .user-card-inner {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        transition: all 0.2s ease;
+        background: #fff;
     }
+    
+    .user-card-inner:hover {
+        border-color: #ced4da;
+        background-color: #f8f9fa;
+    }
+
+    /* 选中状态 */
+    .user-select-card input:checked + .user-card-inner {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+        box-shadow: 0 0 0 1px #0d6efd;
+    }
+    
+    .user-card-inner .check-icon {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: #0d6efd;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .user-select-card input:checked + .user-card-inner .check-icon {
+        opacity: 1;
+    }
+
+    /* 3. 赏金输入框 */
+    .bounty-input-group .input-group-text {
+        background-color: #fff8e1;
+        border-color: #ffe69c;
+        color: #d4a017;
+        font-weight: bold;
+    }
+    .bounty-input-group .form-control:focus {
+        border-color: #ffe69c;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+    }
+
+    /* 4. 滚动条美化 */
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 3px; }
 </style>
 
 <div class="row justify-content-center">
-    <div class="col-md-9">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">🚀 发布新任务</h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="post" id="taskForm">
-                    {% csrf_token %}
-                    
-                    {% if form.errors %}
-                        <div class="alert alert-danger">
-                            <strong>提交出错：</strong>
-                            {{ form.errors }}
-                        </div>
-                    {% endif %}
-
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">任务标题</label>
-                                {{ form.title }}
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">任务类型</label>
-                                {{ form.task_type }}
-                                {% if user.status != 'faculty' %}
-                                    <input type="text" class="form-control" value="💰 悬赏任务" disabled>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row" id="bounty-deadline-row">
-                        <div class="col-md-6 mb-3" id="bounty-col">
-                            <label class="form-label fw-bold">悬赏金币</label>
-                            <div class="input-group">
-                                {{ form.bounty }}
-                                <span class="input-group-text">余额: {{ user.coins }}</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">截止时间</label>
-                            {{ form.deadline }}
-                        </div>
-                    </div>
-
-                    <hr class="my-4">
-
-                    <h5 class="fw-bold mb-3">👥 选择执行对象</h5>
-
-                    {% if user.status == 'faculty' %}
-                    <div class="card mb-4 class-selector-card">
-                        <div class="card-body">
-                            <label class="form-label fw-bold text-primary">🏫 快捷通道：按班级发送</label>
-                            {{ form.target_class }}
-                            <div class="form-text mt-2 text-dark">
-                                <i class="bi bi-info-circle-fill"></i> 
-                                选择班级后，该班级内的所有学生将<b>自动加入</b>任务并<b>强制接受</b>（无需学生确认）。
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">➕ 添加其他执行人 (可选)</label>
-                        <div class="user-select-container custom-scrollbar">
-                            {% for checkbox in form.invitees %}
-                                <label class="user-option-card">
-                                    {{ checkbox.tag }} 
-                                    <span class="text-dark">{{ checkbox.choice_label }}</span>
-                                </label>
-                            {% endfor %}
-                        </div>
-                        <div class="form-text text-muted">
-                            {% if user.status == 'faculty' %}
-                                如果已选择班级，此处可额外添加班级以外的人员。
-                            {% else %}
-                                选中的人员将收到任务邀请。
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">任务详情</label>
-                        <div id="vditor" style="min-height: 400px;"></div>
-                        <textarea name="content" id="hiddenContent" style="display:none;"></textarea>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">🚀 立即发布</button>
-                    </div>
-                </form>
+    <div class="col-lg-9">
+        
+        <div class="d-flex align-items-center mb-4">
+            <a href="{% url 'tasks:my_tasks' %}" class="btn btn-light rounded-circle shadow-sm me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0">🚀 发布新任务</h4>
+                <small class="text-muted">创建挑战，邀请伙伴，共同进步</small>
             </div>
         </div>
+
+        <form method="post" id="taskForm">
+            {% csrf_token %}
+
+            {% if form.errors %}
+                <div class="alert alert-danger shadow-sm border-0 rounded-3 mb-4">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i> <strong>提交受阻：</strong> 请检查下方红色提示项。
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="form-section">
+                <div class="section-title"><i class="bi bi-card-heading text-primary"></i> 任务基础</div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold text-muted">任务标题</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted">类型</label>
+                        {{ form.task_type }}
+                        {% if user.status != 'faculty' %}
+                            <input type="text" class="form-control" value="💰 悬赏任务" disabled>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="bounty-deadline-section">
+                <div class="section-title"><i class="bi bi-hourglass-split text-warning"></i> 赏金与时限</div>
+                <div class="row g-3">
+                    <div class="col-md-6" id="bounty-col">
+                        <label class="form-label small fw-bold text-muted">悬赏金币 (Bounty)</label>
+                        <div class="input-group bounty-input-group">
+                            <span class="input-group-text">🪙</span>
+                            {{ form.bounty }}
+                            <span class="input-group-text bg-light text-secondary fw-normal border-start-0">余额: {{ user.coins }}</span>
+                        </div>
+                        {% if form.bounty.errors %}<div class="text-danger small mt-1">{{ form.bounty.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted">截止时间 (Deadline)</label>
+                        {{ form.deadline }}
+                        {% if form.deadline.errors %}<div class="text-danger small mt-1">{{ form.deadline.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title"><i class="bi bi-people-fill text-success"></i> 选择执行人</div>
+                
+                {% if user.status == 'faculty' %}
+                <div class="bg-light p-3 rounded-3 mb-3 border border-primary border-opacity-25">
+                    <label class="form-label fw-bold text-primary mb-2">🏫 按班级群发 (强制指派)</label>
+                    {{ form.target_class }}
+                    <div class="form-text mt-1 text-muted small">
+                        <i class="bi bi-info-circle"></i> 选中班级后，班内所有学生将<b>自动加入</b>并强制接受任务。
+                    </div>
+                </div>
+                {% endif %}
+
+                <label class="form-label small fw-bold text-muted mb-2">
+                    {% if user.status == 'faculty' %}➕ 额外添加个人 (可选){% else %}选择邀请对象 (必选){% endif %}
+                </label>
+                
+                <div class="user-select-grid custom-scroll border rounded-3 bg-light">
+                    {% for checkbox in form.invitees %}
+                        <label class="user-select-card">
+                            {{ checkbox.tag }}
+                            <div class="user-card-inner">
+                                <i class="bi bi-check-circle-fill check-icon"></i>
+                                <div class="fw-bold text-dark text-truncate">{{ checkbox.choice_label }}</div>
+                                <div class="small text-muted" style="font-size: 0.7rem;">点击选择</div>
+                            </div>
+                        </label>
+                    {% empty %}
+                        <div class="text-center py-4 text-muted w-100 grid-column-full">
+                            暂无可邀请的用户，请先等待更多成员加入。
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if form.invitees.errors %}<div class="text-danger small mt-1">{{ form.invitees.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-section">
+                <div class="section-title"><i class="bi bi-file-text-fill text-secondary"></i> 任务详情</div>
+                <div id="vditor" style="min-height: 400px;"></div>
+                <textarea name="content" id="hiddenContent" style="display:none;">{{ form.content.value|default:'' }}</textarea>
+                {% if form.content.errors %}<div class="text-danger small mt-1">{{ form.content.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="d-grid gap-2 mb-5">
+                <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm fw-bold py-3">
+                    🚀 确认发布任务
+                </button>
+                <a href="{% url 'tasks:my_tasks' %}" class="btn btn-link text-muted">取消</a>
+            </div>
+
+        </form>
     </div>
 </div>
 
@@ -154,9 +218,11 @@
     // Vditor 初始化
     const vditor = new Vditor('vditor', {
         height: 400,
-        placeholder: '在此输入任务详细描述，支持 Markdown 语法...',
+        placeholder: '在此输入任务详细要求、验收标准等...',
         cache: { enable: false },
+        value: document.getElementById('hiddenContent').value, // 回显内容
         preview: { math: { engine: 'KaTeX' } },
+        toolbar: ['emoji', 'headings', 'bold', 'italic', 'strike', 'link', '|', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|', 'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|', 'upload', 'table', 'edit-mode'],
         upload: {
             accept: 'image/jpg, image/jpeg, image/png, image/gif',
             url: '{% url "community:upload_image" %}',
@@ -173,7 +239,7 @@
         }
     });
 
-    // 表单提交时同步编辑器内容
+    // 表单提交拦截
     document.getElementById('taskForm').addEventListener('submit', function(e) {
         const content = vditor.getValue();
         if (!content.trim()) {
@@ -184,25 +250,28 @@
         document.getElementById('hiddenContent').value = content;
     });
 
-    // 导师类型切换逻辑 (联动金币输入框状态)
+    // 导师类型联动逻辑
     const typeSelect = document.getElementById('id_task_type');
     const bountyInput = document.getElementById('id_bounty');
+    const bountySection = document.getElementById('bounty-deadline-section');
     const bountyCol = document.getElementById('bounty-col');
 
     if (typeSelect) {
         function toggleBounty() {
             if (typeSelect.value === 'faculty') {
+                // 导师模式：赏金归零并禁用
                 bountyInput.value = 0;
-                bountyCol.style.opacity = '0.5';
                 bountyInput.readOnly = true;
+                bountyCol.style.opacity = '0.5';
+                bountyCol.style.pointerEvents = 'none';
             } else {
+                // 悬赏模式：恢复
                 bountyCol.style.opacity = '1';
+                bountyCol.style.pointerEvents = 'auto';
                 bountyInput.readOnly = false;
             }
         }
-        // 初始化运行一次
         toggleBounty();
-        // 监听变化
         typeSelect.addEventListener('change', toggleBounty);
     }
 </script>

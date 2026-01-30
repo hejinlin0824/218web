@@ -3,67 +3,156 @@
 {% block title %}班级管理 - 导师控制台{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<style>
+    /* === 班级管理页专用样式 === */
+
+    /* 1. 班级卡片 */
+    .class-card {
+        border: none;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border-left: 5px solid #0d6efd; /* 左侧强调色 */
+        height: 100%;
+    }
+    .class-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+
+    /* 2. 成员列表容器 */
+    .member-list-box {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 120px;
+        overflow-y: auto;
+        border: 1px solid #f0f0f0;
+    }
+
+    /* 3. 成员徽章 */
+    .member-badge {
+        font-size: 0.8rem;
+        padding: 5px 10px;
+        background: #fff;
+        border: 1px solid #e9ecef;
+        color: #495057;
+        border-radius: 20px;
+        display: inline-block;
+        margin: 0 4px 4px 0;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .member-badge i {
+        color: #adb5bd;
+        margin-right: 4px;
+    }
+
+    /* 4. 滚动条美化 */
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #adb5bd; }
+
+    /* 5. 头部区域 */
+    .page-header {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        margin-bottom: 2rem;
+        border: 1px solid #f0f0f0;
+    }
+</style>
+
+<div class="container-xl py-4">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-            <h3 class="fw-bold mb-1">🎓 班级管理</h3>
-            <p class="text-muted small mb-0">管理您的学生团队，支持一键发布班级任务</p>
+            <div class="d-flex align-items-center mb-1">
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                    <i class="bi bi-mortarboard-fill fs-4"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0">班级管理</h3>
+                    <p class="text-muted small mb-0">您已创建 <strong>{{ classes.count }}</strong> 个班级</p>
+                </div>
+            </div>
         </div>
+        
         <div class="d-flex gap-2">
-            <a href="{% url 'home' %}" class="btn btn-outline-secondary">返回主页</a>
-            <a href="{% url 'core:class_create' %}" class="btn btn-primary shadow-sm">
-                + 组建新班级
+            <a href="{% url 'home' %}" class="btn btn-light border text-muted rounded-pill px-4">
+                <i class="bi bi-house-door"></i> 返回主页
+            </a>
+            <a href="{% url 'core:class_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="bi bi-plus-lg me-1"></i> 组建新班级
             </a>
         </div>
     </div>
 
-    <div class="row">
+    <div class="row g-4">
         {% for cls in classes %}
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 fw-bold text-primary">{{ cls.name }}</h5>
-                    <span class="badge bg-primary rounded-pill">{{ cls.students.count }} 人</span>
+        <div class="col-lg-6">
+            <div class="class-card d-flex flex-column">
+                
+                <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">{{ cls.name }}</h5>
+                        <div class="text-muted small">
+                            <i class="bi bi-calendar3 me-1"></i> 创建于 {{ cls.created_at|date:"Y-m-d" }}
+                        </div>
+                    </div>
+                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">
+                        <i class="bi bi-people-fill me-1"></i> {{ cls.students.count }} 人
+                    </span>
                 </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        {{ cls.description|default:"暂无简介" }}
+
+                <div class="card-body px-4 py-3 flex-grow-1">
+                    <p class="text-secondary small mb-3">
+                        {{ cls.description|default:"暂无班级简介..."|truncatechars:60 }}
                     </p>
                     
-                    <h6 class="fw-bold small text-secondary">成员列表：</h6>
-                    <div class="border rounded p-2 bg-light custom-scrollbar" style="max-height: 120px; overflow-y: auto;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <small class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem;">成员预览</small>
+                        <a href="{% url 'core:class_edit' cls.pk %}" class="text-decoration-none small">管理成员 &raquo;</a>
+                    </div>
+                    
+                    <div class="member-list-box custom-scrollbar">
                         {% for student in cls.students.all %}
-                            <span class="badge bg-white text-dark border me-1 mb-1 shadow-sm">
-                                {{ student.nickname|default:student.username }}
+                            <span class="member-badge">
+                                <i class="bi bi-person-circle"></i> {{ student.nickname|default:student.username }}
                             </span>
                         {% empty %}
-                            <span class="text-muted small fst-italic">暂无成员，请点击管理添加。</span>
+                            <div class="text-center py-4 text-muted small fst-italic">
+                                <i class="bi bi-inbox fs-5 d-block mb-1 opacity-50"></i>
+                                暂无成员，请点击下方管理按钮添加
+                            </div>
                         {% endfor %}
                     </div>
                 </div>
-                <div class="card-footer bg-white border-top-0 d-flex justify-content-between py-3">
-                    <span class="text-muted small align-self-center">创建于 {{ cls.created_at|date:"Y-m-d" }}</span>
-                    <div>
-                        <a href="{% url 'core:class_edit' cls.pk %}" class="btn btn-sm btn-outline-primary me-1">
-                            ⚙️ 管理/加人
-                        </a>
-                        <a href="{% url 'core:class_delete' cls.pk %}" 
-                           class="btn btn-sm btn-outline-danger"
-                           onclick="return confirm('⚠️ 确定要解散【{{ cls.name }}】吗？此操作不可恢复！')">
-                            🗑️ 解散
-                        </a>
-                    </div>
+
+                <div class="card-footer bg-white border-top px-4 py-3 d-flex justify-content-end gap-2 rounded-bottom-4">
+                    <a href="{% url 'core:class_edit' cls.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        <i class="bi bi-gear-fill me-1"></i> 配置与管理
+                    </a>
+                    <a href="{% url 'core:class_delete' cls.pk %}" 
+                       class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                       onclick="return confirm('⚠️ 高风险操作\n\n确定要解散【{{ cls.name }}】吗？\n解散后，所有成员将自动移出该班级，且操作不可恢复！')">
+                        <i class="bi bi-trash3-fill me-1"></i> 解散
+                    </a>
                 </div>
             </div>
         </div>
         {% empty %}
+        
         <div class="col-12">
-            <div class="text-center py-5 bg-white rounded shadow-sm">
-                <div class="display-1 mb-3">🏫</div>
-                <h4 class="text-muted">您还没有创建任何班级</h4>
-                <p class="text-secondary mb-4">创建班级后，您可以向该班级一键发布强制任务。</p>
-                <a href="{% url 'core:class_create' %}" class="btn btn-primary px-4 rounded-pill">立即创建</a>
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm border border-light">
+                <div class="display-1 mb-3 opacity-25">🏫</div>
+                <h4 class="fw-bold text-dark">您还没有创建任何班级</h4>
+                <p class="text-muted mb-4">创建班级后，您可以向该班级一键发布强制任务，高效管理学生团队。</p>
+                <a href="{% url 'core:class_create' %}" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm fw-bold">
+                    <i class="bi bi-plus-circle-fill me-2"></i> 立即创建第一个班级
+                </a>
             </div>
         </div>
         {% endfor %}

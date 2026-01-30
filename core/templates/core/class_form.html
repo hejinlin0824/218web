@@ -4,98 +4,202 @@
 
 {% block content %}
 <style>
-    /* 美化学生选择列表 */
-    .student-select-box {
+    /* === 班级表单页专用样式 === */
+
+    /* 1. 容器美化 */
+    .form-card {
+        background: #fff;
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    }
+
+    /* 2. 表单区块 */
+    .form-section-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* 3. 学生选择网格 (Grid System) */
+    .student-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* 自适应列宽 */
+        gap: 12px;
         max-height: 400px;
         overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        background: #f8f9fa;
-        padding: 15px;
+        padding: 4px;
     }
-    
-    .student-option {
+
+    /* 4. 学生卡片 (核心交互) */
+    /* 隐藏原生 checkbox，利用 label 做点击触发 */
+    .student-select-card input[type="checkbox"] {
+        display: none;
+    }
+
+    .student-select-card {
         display: block;
-        background: white;
-        border: 1px solid #e9ecef;
-        padding: 8px 12px;
-        margin-bottom: 8px;
-        border-radius: 6px;
         cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+
+    .student-card-inner {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* 悬停效果 */
+    .student-card-inner:hover {
+        background: #fff;
+        border-color: #adb5bd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    /* 选中状态 (高亮) */
+    .student-select-card input:checked + .student-card-inner {
+        background-color: #f0f7ff;
+        border-color: #0d6efd;
+        color: #0d6efd;
+        box-shadow: 0 0 0 1px #0d6efd;
+    }
+
+    /* 选中时的对勾图标 */
+    .check-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 0.8rem;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: all 0.2s;
+        color: #0d6efd;
+    }
+    .student-select-card input:checked + .student-card-inner .check-badge {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    /* 头像占位符 */
+    .avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 8px;
+        background: #e9ecef;
+        color: #6c757d;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
         transition: all 0.2s;
     }
-    
-    .student-option:hover {
-        border-color: #0d6efd;
-        background-color: #f0f7ff;
+    .student-select-card input:checked + .student-card-inner .avatar-placeholder {
+        background: #cfe2ff;
+        color: #0d6efd;
     }
-    
-    /* 选中状态（如果需要更强的视觉反馈，可以配合JS，这里仅靠checkbox本身） */
-    .student-option input[type="checkbox"] {
-        transform: scale(1.2);
-        margin-right: 10px;
-        cursor: pointer;
-    }
+
+    /* 滚动条美化 */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 </style>
 
 <div class="row justify-content-center py-4">
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold">{{ title }}</h5>
-                <a href="{% url 'core:class_management' %}" class="btn-close" aria-label="Close"></a>
+    <div class="col-lg-8">
+        
+        <div class="d-flex align-items-center mb-4">
+            <a href="{% url 'core:class_management' %}" class="btn btn-light rounded-circle shadow-sm me-3 border" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">{{ title }}</h4>
+                <small class="text-muted">配置班级信息并添加成员</small>
             </div>
-            <div class="card-body p-4">
+        </div>
+
+        <div class="card form-card">
+            <div class="card-body p-4 p-md-5">
                 <form method="post">
                     {% csrf_token %}
                     
                     {% if form.errors %}
-                        <div class="alert alert-danger">{{ form.errors }}</div>
+                        <div class="alert alert-danger border-0 shadow-sm mb-4 rounded-3">
+                            <i class="bi bi-exclamation-circle-fill me-2"></i> 请修正以下错误
+                            {{ form.errors }}
+                        </div>
                     {% endif %}
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">班级名称</label>
-                        {{ form.name }}
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">班级简介</label>
-                        {{ form.description }}
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-primary">
-                            👥 班级成员管理
-                        </label>
-                        <p class="small text-muted mb-2">
-                            列表仅显示身份为“在读(Student)”的用户。勾选即加入，取消勾选即移出（无需对方同意）。
-                        </p>
-                        
-                        <div class="student-select-box custom-scrollbar">
-                            {% if form.students|length > 0 %}
-                                {% for checkbox in form.students %}
-                                    <label class="student-option d-flex align-items-center">
-                                        {{ checkbox.tag }}
-                                        <span class="fw-bold text-dark">{{ checkbox.choice_label }}</span>
-                                    </label>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-center py-4 text-muted">
-                                    暂无在读学生可供选择。请让学生先在个人中心认证身份。
-                                </div>
-                            {% endif %}
+                    <div class="mb-5">
+                        <div class="form-section-title"><i class="bi bi-info-circle me-2"></i> 班级基础信息</div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-secondary">班级名称</label>
+                                {{ form.name }}
+                                <div class="form-text small">例如：2023级 计算机科学与技术 1班</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-secondary">班级简介</label>
+                                {{ form.description }}
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">
-                            💾 保存设置
-                        </button>
-                        <a href="{% url 'core:class_management' %}" class="btn btn-link text-muted">取消</a>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center form-section-title">
+                            <span><i class="bi bi-people me-2"></i> 成员管理</span>
+                            <span class="badge bg-light text-primary border rounded-pill fw-normal">仅显示“在读”学生</span>
+                        </div>
+                        
+                        <div class="student-grid custom-scrollbar">
+                            {% if form.students|length > 0 %}
+                                {% for checkbox in form.students %}
+                                    <label class="student-select-card">
+                                        {{ checkbox.tag }} <div class="student-card-inner">
+                                            <i class="bi bi-check-circle-fill check-badge"></i>
+                                            <div class="avatar-placeholder">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                            <div class="fw-bold text-truncate small">{{ checkbox.choice_label }}</div>
+                                            <div class="text-muted" style="font-size: 0.65rem;">点击选择</div>
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-5 text-muted w-100 grid-column-full">
+                                    <div class="display-4 mb-2 opacity-25">🎓</div>
+                                    <p class="mb-2">暂无可添加的学生</p>
+                                    <small class="text-secondary">请通知学生在“个人中心”将身份认证为“在读学生”</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="form-text text-end mt-2 text-muted small">
+                            <i class="bi bi-check2-all"></i> 选中即加入，未选中即移出
+                        </div>
                     </div>
+
+                    <div class="d-grid gap-2 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm fw-bold">
+                            💾 保存班级设置
+                        </button>
+                    </div>
+
                 </form>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}
