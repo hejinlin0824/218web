@@ -1,51 +1,434 @@
 {% extends 'base.html' %}
 
-{% block title %}英语背诵挑战{% endblock %}
+{% block title %}词汇空间{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <h1 class="display-4 fw-bold mb-4">📚 英语词汇挑战</h1>
-            <p class="lead text-muted mb-5">沉浸式拼写练习，不仅要认识，还要会拼写。</p>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+    /* === 全局重置与字体 === */
+    :root {
+        --bg-body: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-sub: #64748b;
+        --border-color: #e2e8f0;
+        --primary-blue: #3b82f6;
+    }
+
+    body {
+        background-color: var(--bg-body);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .vocab-container {
+        padding: 4rem 0 6rem;
+    }
+
+    /* === 1. 顶部 Header (极简风格) === */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 3rem;
+        padding: 0 0.5rem;
+    }
+
+    .header-left h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.05rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .header-left p {
+        color: var(--text-sub);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    /* 设置胶囊 (悬浮感) */
+    .config-pill {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: all 0.2s ease;
+    }
+    
+    .config-pill:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
+    }
+
+    .config-select {
+        border: none;
+        background: transparent;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-main);
+        cursor: pointer;
+        outline: none;
+        padding-right: 2rem;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+        background-size: 12px 12px;
+        appearance: none;
+    }
+
+    /* === 2. 卡片网格布局 === */
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* 宽卡片 (CET4/6) */
+    .col-span-6 { grid-column: span 12; }
+    @media (min-width: 992px) { .col-span-6 { grid-column: span 6; } }
+
+    /* 窄卡片 (其他) */
+    .col-span-4 { grid-column: span 12; }
+    @media (min-width: 768px) { .col-span-4 { grid-column: span 6; } }
+    @media (min-width: 1200px) { .col-span-4 { grid-column: span 4; } }
+
+    /* === 3. 卡片设计 (Bento Style) === */
+    .course-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* 悬停光效 */
+    .course-card::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: 20px;
+        box-shadow: inset 0 0 0 2px transparent;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .course-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
+        border-color: transparent;
+    }
+    
+    /* 头部图标 */
+    .card-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        transition: transform 0.3s ease;
+    }
+    .course-card:hover .card-icon {
+        transform: scale(1.05) rotate(-3deg);
+    }
+
+    /* 文本区 */
+    .card-meta { margin-bottom: 1.5rem; }
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 0.35rem;
+    }
+    .card-desc {
+        font-size: 0.875rem;
+        color: var(--text-sub);
+        line-height: 1.4;
+    }
+
+    /* 进度数据块 */
+    .progress-block {
+        margin-top: auto;
+    }
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-sub);
+    }
+    .progress-percent {
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    /* 进度条轨道 */
+    .progress-track {
+        height: 6px;
+        background-color: #f1f5f9;
+        border-radius: 99px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        border-radius: 99px;
+        width: 0;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* 底部按钮区 */
+    .card-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        opacity: 0.9;
+        transition: opacity 0.2s;
+    }
+    .course-card:hover .card-actions { opacity: 1; }
+
+    .btn-play {
+        flex: 1;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: white;
+        cursor: pointer;
+        transition: filter 0.2s;
+    }
+    .btn-play:hover { filter: brightness(110%); }
+
+    .btn-mistake {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: #fff;
+        color: var(--text-sub);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-mistake:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+        background: #fef2f2;
+    }
+
+    /* === 主题色定义 (CSS Variables Scope) === */
+    /* CET4: 科技蓝 */
+    .theme-cet4 { --accent: #3b82f6; --accent-bg: #eff6ff; }
+    /* CET6: 活力橙 */
+    .theme-cet6 { --accent: #f59e0b; --accent-bg: #fffbeb; }
+    /* KaoYan: 学术青 */
+    .theme-kaoyan { --accent: #10b981; --accent-bg: #ecfdf5; }
+    /* TOEFL: 皇家紫 */
+    .theme-toefl { --accent: #8b5cf6; --accent-bg: #f5f3ff; }
+    /* IELTS: 玫瑰红 */
+    .theme-ielts { --accent: #f43f5e; --accent-bg: #fff1f2; }
+
+    /* 应用主题色 */
+    .theme-card .card-icon { background-color: var(--accent-bg); color: var(--accent); }
+    .theme-card .progress-percent { color: var(--accent); }
+    .theme-card .progress-fill { background-color: var(--accent); }
+    .theme-card .btn-play { background-color: var(--accent); }
+    .theme-card:hover::after { box-shadow: inset 0 0 0 2px var(--accent); } /* Hover Border Effect */
+
+</style>
+
+<div class="vocab-section">
+    <div class="container">
+        
+        <div class="dashboard-header animate__animated animate__fadeInDown">
+            <div class="header-left">
+                <h1>Dashboard</h1>
+                <p>Welcome back, {{ user.nickname|default:user.username }}</p>
+            </div>
             
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="card shadow-sm h-100 border-0 rounded-4 hover-up">
-                        <div class="card-body p-5">
-                            <div class="display-1 mb-3">📘</div>
-                            <h3 class="fw-bold">CET-4 四级词汇</h3>
-                            <p class="text-secondary">基础夯实，大学英语四级核心词库。</p>
-                            <a href="{% url 'vocabulary:practice' %}?level=CET4" class="btn btn-primary rounded-pill px-4 w-100 fw-bold">
-                                开始挑战
-                            </a>
+            <div class="header-right">
+                <div class="config-pill">
+                    <i data-lucide="layers" width="16" height="16" class="text-secondary"></i>
+                    <span class="text-secondary small fw-bold">Batch Size:</span>
+                    <select id="groupSizeSelect" class="config-select">
+                        <option value="10" selected>10 Words</option>
+                        <option value="20">20 Words</option>
+                        <option value="30">30 Words</option>
+                        <option value="50">50 Words</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-grid">
+
+            <div class="col-span-6 animate__animated animate__fadeInUp" style="animation-delay: 0.05s;">
+                <div class="course-card theme-card theme-cet4">
+                    <div>
+                        <div class="card-icon"><i data-lucide="book-open" width="28" height="28"></i></div>
+                        <div class="card-meta">
+                            <h3 class="card-title">CET-4</h3>
+                            <p class="card-desc">大学英语四级核心词汇，基础巩固。</p>
                         </div>
                     </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="card shadow-sm h-100 border-0 rounded-4 hover-up">
-                        <div class="card-body p-5">
-                            <div class="display-1 mb-3">📕</div>
-                            <h3 class="fw-bold">CET-6 六级词汇</h3>
-                            <p class="text-secondary">进阶提升，大学英语六级高频词库。</p>
-                            <a href="{% url 'vocabulary:practice' %}?level=CET6" class="btn btn-warning text-white rounded-pill px-4 w-100 fw-bold">
-                                开始挑战
-                            </a>
+                    <div class="progress-block">
+                        <div class="progress-info">
+                            <span>已掌握 {{ stats.CET4.learned }} / {{ stats.CET4.total }}</span>
+                            <span class="progress-percent">{{ stats.CET4.progress }}%</span>
                         </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ stats.CET4.progress }}%; {% if stats.CET4.progress > 0 %}min-width: 6px;{% endif %}"></div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="startPractice('CET4')" class="btn-play">
+                            Start Learning
+                        </button>
+                        <a href="{% url 'vocabulary:mistake_book' %}?level=CET4" class="btn-mistake" title="错题本">
+                            <i data-lucide="history" width="20" height="20"></i>
+                        </a>
                     </div>
                 </div>
             </div>
-            
-            <div class="mt-5 text-muted small">
-                <i class="bi bi-info-circle me-1"></i> 拼写正确即可获得金币奖励
+
+            <div class="col-span-6 animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                <div class="course-card theme-card theme-cet6">
+                    <div>
+                        <div class="card-icon"><i data-lucide="zap" width="28" height="28"></i></div>
+                        <div class="card-meta">
+                            <h3 class="card-title">CET-6</h3>
+                            <p class="card-desc">大学英语六级进阶词汇，深度阅读必备。</p>
+                        </div>
+                    </div>
+                    <div class="progress-block">
+                        <div class="progress-info">
+                            <span>已掌握 {{ stats.CET6.learned }} / {{ stats.CET6.total }}</span>
+                            <span class="progress-percent">{{ stats.CET6.progress }}%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ stats.CET6.progress }}%; {% if stats.CET6.progress > 0 %}min-width: 6px;{% endif %}"></div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="startPractice('CET6')" class="btn-play">
+                            Start Learning
+                        </button>
+                        <a href="{% url 'vocabulary:mistake_book' %}?level=CET6" class="btn-mistake" title="错题本">
+                            <i data-lucide="history" width="20" height="20"></i>
+                        </a>
+                    </div>
+                </div>
             </div>
+
+            <div class="col-span-4 animate__animated animate__fadeInUp" style="animation-delay: 0.15s;">
+                <div class="course-card theme-card theme-kaoyan">
+                    <div class="card-icon"><i data-lucide="graduation-cap" width="26" height="26"></i></div>
+                    <div class="card-meta">
+                        <h3 class="card-title">考研英语</h3>
+                        <p class="card-desc">研究生入学考试核心词。</p>
+                    </div>
+                    <div class="progress-block">
+                        <div class="progress-info">
+                            <span>{{ stats.KaoYan.learned }} / {{ stats.KaoYan.total }}</span>
+                            <span class="progress-percent">{{ stats.KaoYan.progress }}%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ stats.KaoYan.progress }}%; {% if stats.KaoYan.progress > 0 %}min-width: 6px;{% endif %}"></div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="startPractice('KaoYan')" class="btn-play">Practice</button>
+                        <a href="{% url 'vocabulary:mistake_book' %}?level=KaoYan" class="btn-mistake"><i data-lucide="history" width="18" height="18"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                <div class="course-card theme-card theme-toefl">
+                    <div class="card-icon"><i data-lucide="globe" width="26" height="26"></i></div>
+                    <div class="card-meta">
+                        <h3 class="card-title">TOEFL</h3>
+                        <p class="card-desc">北美留学学术词汇。</p>
+                    </div>
+                    <div class="progress-block">
+                        <div class="progress-info">
+                            <span>{{ stats.TOEFL.learned }} / {{ stats.TOEFL.total }}</span>
+                            <span class="progress-percent">{{ stats.TOEFL.progress }}%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ stats.TOEFL.progress }}%; {% if stats.TOEFL.progress > 0 %}min-width: 6px;{% endif %}"></div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="startPractice('TOEFL')" class="btn-play">Practice</button>
+                        <a href="{% url 'vocabulary:mistake_book' %}?level=TOEFL" class="btn-mistake"><i data-lucide="history" width="18" height="18"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-4 animate__animated animate__fadeInUp" style="animation-delay: 0.25s;">
+                <div class="course-card theme-card theme-ielts">
+                    <div class="card-icon"><i data-lucide="languages" width="26" height="26"></i></div>
+                    <div class="card-meta">
+                        <h3 class="card-title">IELTS</h3>
+                        <p class="card-desc">英联邦留学必备词汇。</p>
+                    </div>
+                    <div class="progress-block">
+                        <div class="progress-info">
+                            <span>{{ stats.IELTS.learned }} / {{ stats.IELTS.total }}</span>
+                            <span class="progress-percent">{{ stats.IELTS.progress }}%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ stats.IELTS.progress }}%; {% if stats.IELTS.progress > 0 %}min-width: 6px;{% endif %}"></div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="startPractice('IELTS')" class="btn-play">Practice</button>
+                        <a href="{% url 'vocabulary:mistake_book' %}?level=IELTS" class="btn-mistake"><i data-lucide="history" width="18" height="18"></i></a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
-<style>
-    .hover-up { transition: transform 0.2s; }
-    .hover-up:hover { transform: translateY(-5px); }
-</style>
+<script>
+    // 初始化 Lucide 图标
+    lucide.createIcons();
+
+    function startPractice(level) {
+        const count = document.getElementById('groupSizeSelect').value;
+        const url = `{% url 'vocabulary:practice' %}?level=${level}&count=${count}`;
+        window.location.href = url;
+    }
+</script>
 {% endblock %}

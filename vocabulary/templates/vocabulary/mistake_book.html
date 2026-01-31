@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}错题本 - {{ level }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">📕 错题本 ({{ level }})</h3>
+            <p class="text-muted small mb-0">共 {{ mistakes.count }} 个生词待攻克</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'vocabulary:index' %}" class="btn btn-outline-secondary rounded-pill">返回</a>
+            {% if mistakes.count > 0 %}
+            <a href="{% url 'vocabulary:practice' %}?level={{ level }}&mode=review" class="btn btn-danger rounded-pill fw-bold shadow-sm">
+                <i class="bi bi-lightning-charge-fill"></i> 立即复习
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {% for item in mistakes %}
+        <div class="col-md-6 col-lg-4" id="card-{{ item.word.id }}">
+            <div class="card h-100 shadow-sm border-0 rounded-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h4 class="fw-bold text-dark mb-0">{{ item.word.word }}</h4>
+                        <span class="badge bg-danger bg-opacity-10 text-danger">错 {{ item.mistake_count }} 次</span>
+                    </div>
+                    <p class="text-muted small text-truncate">{{ item.word.meaning }}</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <button class="btn btn-sm btn-light text-primary" data-bs-toggle="modal" data-bs-target="#wordModal-{{ item.word.id }}">
+                            <i class="bi bi-eye"></i> 详情
+                        </button>
+                        <button class="btn btn-sm btn-outline-success rounded-pill" onclick="killWord({{ item.word.id }})">
+                            <i class="bi bi-check-lg"></i> 斩!
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="wordModal-{{ item.word.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">{{ item.word.word }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>音标：</strong> <span class="font-monospace text-muted">{{ item.word.phonetic }}</span></p>
+                            <p><strong>释义：</strong> {{ item.word.meaning }}</p>
+                            <hr>
+                            <h6 class="fw-bold text-secondary">例句：</h6>
+                            <p class="mb-1">{{ item.word.example_en|default:"暂无例句" }}</p>
+                            <p class="text-muted small">{{ item.word.example_cn }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="display-1 mb-3 opacity-25">🎉</div>
+            <h4>太棒了！没有错题</h4>
+            <p class="text-muted">快去背新单词吧！</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function killWord(wordId) {
+    if(!confirm("确定已掌握这个单词了吗？它将移出错题本。")) return;
+    
+    fetch("{% url 'vocabulary:api_kill_word' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ word_id: wordId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.status === 'ok') {
+            // 移除卡片动画
+            const card = document.getElementById(`card-${wordId}`);
+            card.style.transition = 'all 0.5s';
+            card.style.transform = 'scale(0)';
+            setTimeout(() => card.remove(), 500);
+        }
+    });
+}
+</script>
+{% endblock %}
