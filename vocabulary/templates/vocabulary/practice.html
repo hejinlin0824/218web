@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+
+{% block title %}拼写练习 - {{ level }}{% endblock %}
+
+{# 隐藏侧边栏，全屏沉浸体验 #}
+{% block sidebar %}{% endblock %}
+
+{% block content_container %}
+<div class="col-12">
+    <div class="container py-5" style="max-width: 800px;">
+        
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <a href="{% url 'vocabulary:index' %}" class="btn btn-light rounded-circle shadow-sm" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-x-lg"></i>
+            </a>
+            <div class="flex-grow-1 mx-4">
+                <div class="progress" style="height: 10px; border-radius: 5px;">
+                    <div class="progress-bar bg-success" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="fw-bold text-muted"><span id="currentIdx">0</span> / <span id="totalCount">0</span></div>
+        </div>
+
+        <div class="text-center" id="gameArea">
+            
+            <div class="mb-5 animate__animated animate__fadeIn">
+                <h3 class="fw-bold text-dark mb-2" id="wordMeaning">加载中...</h3>
+                <div class="text-muted fs-5 font-monospace" id="wordPhonetic"></div>
+            </div>
+
+            <div id="inputContainer" class="d-flex justify-content-center gap-2 mb-5 flex-wrap">
+                </div>
+
+            <div id="feedbackMsg" class="h5 fw-bold text-success" style="min-height: 30px;"></div>
+
+            <audio id="wordAudio"></audio>
+
+        </div>
+
+        <div id="resultArea" class="text-center d-none">
+            <div class="display-1 mb-3">🎉</div>
+            <h2 class="fw-bold mb-3">练习完成！</h2>
+            <p class="lead text-muted mb-4">本次共练习了 <span id="resultCount">0</span> 个单词</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{% url 'vocabulary:index' %}" class="btn btn-outline-secondary rounded-pill px-4">返回大厅</a>
+                <button onclick="location.reload()" class="btn btn-primary rounded-pill px-4 fw-bold">再来一组</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* === 拼写格子的样式 === */
+    .char-input {
+        width: 50px;
+        height: 60px;
+        font-size: 2rem;
+        text-align: center;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        background-color: #fff;
+        font-weight: bold;
+        text-transform: uppercase;
+        transition: all 0.2s;
+        caret-color: transparent; /* 隐藏光标，模拟游戏感 */
+    }
+    
+    /* 选中状态 */
+    .char-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+        outline: none;
+        transform: translateY(-2px);
+    }
+    
+    /* 正确样式 (绿色) */
+    .char-input.correct {
+        background-color: #d1e7dd;
+        border-color: #198754;
+        color: #0f5132;
+    }
+    
+    /* 错误样式 (红色 + 抖动动画) */
+    .char-input.wrong {
+        border-color: #dc3545;
+        color: #dc3545;
+        background-color: #f8d7da;
+        animation: shake 0.4s;
+    }
+    
+    /* 错误抖动动画关键帧 */
+    @keyframes shake {
+        0% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        50% { transform: translateX(5px); }
+        75% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    /* 手机端适配：格子变小一点 */
+    @media (max-width: 576px) {
+        .char-input {
+            width: 36px;
+            height: 48px;
+            font-size: 1.5rem;
+            border-radius: 8px;
+        }
+    }
+</style>
+
+<script>
+    // 1. 初始化配置
+    const LEVEL = "{{ level }}";
+    // 调用我们在后端写好的 API
+    const API_URL = `{% url 'vocabulary:api_get_words' %}?level=${LEVEL}&count=10`; 
+    
+    let wordsQueue = [];       // 存放取回来的单词列表
+    let currentWordObj = null; // 当前正在背的单词对象
+    let currentIndex = 0;      // 当前第几个
+    let isProcessing = false;  // 防止连击冲突
+
+    // 页面加载完成后，启动游戏
+    document.addEventListener('DOMContentLoaded', initGame);
+
+    // 2. 初始化游戏：去后端拿数据
+    async function initGame() {
+        try {
+            const res = await fetch(API_URL);
+            const json = await res.json();
+            
+            if (json.status === 'ok') {
+                wordsQueue = json.data;
+                document.getElementById('totalCount').innerText = wordsQueue.length;
+                
+                if (wordsQueue.length === 0) {
+                    alert("词库里好像没有这个等级的单词？请先导入数据。");
+                    return;
+                }
+                
+                // 开始第一个词
+                loadNextWord();
+            } else {
+                alert("加载单词失败：" + json.msg);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("网络错误，无法连接到服务器");
+        }
+    }
+
+    // 3. 加载下一个单词 (核心逻辑)
+    function loadNextWord() {
+        // 如果背完了，显示结算页
+        if (currentIndex >= wordsQueue.length) {
+            showResult();
+            return;
+        }
+
+        // 获取当前单词数据
+        currentWordObj = wordsQueue[currentIndex];
+        const word = currentWordObj.word.toLowerCase(); // 目标单词 (小写)
+        
+        // 更新界面显示 (进度、释义、音标)
+        document.getElementById('currentIdx').innerText = currentIndex + 1;
+        document.getElementById('progressBar').style.width = ((currentIndex) / wordsQueue.length * 100) + '%';
+        document.getElementById('wordMeaning').innerText = currentWordObj.meaning;
+        document.getElementById('wordPhonetic').innerText = currentWordObj.phonetic || "";
+        document.getElementById('feedbackMsg').innerText = "";
+
+        // 动态生成输入框：单词有几个字母，就生几个框
+        const container = document.getElementById('inputContainer');
+        container.innerHTML = ''; // 清空上一题
+        
+        for (let i = 0; i < word.length; i++) {
+            // 跳过空格或特殊符号 (如果单词里有空格，比如 'hang out')
+            if (word[i] === ' ' || word[i] === '-') {
+                const span = document.createElement('span');
+                span.innerText = word[i];
+                span.className = "fs-2 align-self-center";
+                container.appendChild(span);
+                continue;
+            }
+
+            const input = document.createElement('input');
+            input.type = "text";
+            input.maxLength = 1; // 只能输1个字
+            input.className = "char-input";
+            input.dataset.index = i; // 记录它是第几个字母
+            input.dataset.char = word[i]; // 记录正确答案是什么
+            
+            // 绑定事件：输入监听、删除监听、点击聚焦
+            input.addEventListener('input', handleInput);
+            input.addEventListener('keydown', handleKeyDown);
+            input.addEventListener('click', () => focusFirstEmpty()); // 强制从左往右输
+
+            container.appendChild(input);
+        }
+
+        // 自动聚焦第一个格子
+        setTimeout(() => focusFirstEmpty(), 100);
+    }
+
+    // 4. 处理输入事件
+    function handleInput(e) {
+        const input = e.target;
+        const val = input.value.toLowerCase();
+        const correctChar = input.dataset.char.toLowerCase();
+
+        if (!val) return; // 如果被删空了，不管
+
+        // 核心判断：输对了吗？
+        if (val === correctChar) {
+            // ✅ 对了：变绿
+            input.classList.add('correct');
+            input.classList.remove('wrong');
+            input.disabled = true; // 锁定不让改了
+            
+            // 检查是不是拼完了
+            if (checkAllComplete()) {
+                handleWordComplete();
+            } else {
+                // 还没完，聚焦下一个空格子
+                focusFirstEmpty();
+            }
+        } else {
+            // ❌ 错了：变红 + 抖动
+            input.value = ''; // 清空错误输入
+            input.classList.add('wrong');
+            
+            // 0.5秒后移除红色样式，方便重输
+            setTimeout(() => input.classList.remove('wrong'), 500);
+        }
+    }
+
+    // 5. 处理键盘功能键 (比如退格)
+    function handleKeyDown(e) {
+        // 如果按了 Backspace 且当前框是空的，跳回上一个格子
+        if (e.key === 'Backspace' && e.target.value === '') {
+            const inputs = Array.from(document.querySelectorAll('.char-input'));
+            const currIdx = inputs.indexOf(e.target);
+            if (currIdx > 0) {
+                // 找到上一个没被锁定(disabled)的格子
+                // 其实逻辑上只有前一个可能没锁，或者已经锁了。
+                // 简单的逻辑是：这里我们设定输对了就锁死，所以不能退格修改已正确的。
+                // 所以实际上 Backspace 在这个模式下用处不大，除非没输对。
+            }
+        }
+    }
+
+    // 6. 辅助：聚焦第一个没填的格子
+    function focusFirstEmpty() {
+        const inputs = document.querySelectorAll('.char-input');
+        for (let input of inputs) {
+            if (!input.disabled && !input.value) {
+                input.focus();
+                return;
+            }
+        }
+    }
+
+    // 7. 辅助：检查是否全部拼写完成
+    function checkAllComplete() {
+        const inputs = document.querySelectorAll('.char-input');
+        // 只要有一个没被禁用(说明还没输对锁定)，就是没完成
+        for (let input of inputs) {
+            if (!input.disabled) return false;
+        }
+        return true;
+    }
+
+    // 8. 单词完成后的逻辑
+    function handleWordComplete() {
+        if (isProcessing) return;
+        isProcessing = true;
+
+        // 播放发音
+        const audio = document.getElementById('wordAudio');
+        audio.src = currentWordObj.audio_url;
+        audio.play().catch(e => console.log("浏览器限制了自动播放", e));
+
+        document.getElementById('feedbackMsg').innerText = "✅ Excellent! 拼写正确";
+        
+        // 进度条更新
+        document.getElementById('progressBar').style.width = ((currentIndex + 1) / wordsQueue.length * 100) + '%';
+
+        // 延迟 1.2 秒进入下一个词
+        setTimeout(() => {
+            currentIndex++;
+            isProcessing = false;
+            loadNextWord();
+        }, 1200);
+    }
+
+    // 9. 显示结算页
+    function showResult() {
+        document.getElementById('gameArea').classList.add('d-none');
+        document.getElementById('resultArea').classList.remove('d-none');
+        document.getElementById('resultCount').innerText = wordsQueue.length;
+    }
+</script>
+{% endblock %}

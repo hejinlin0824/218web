@@ -38,6 +38,8 @@ urlpatterns = [
     # 👆👆👆 注册 tasks 路由 👆👆👆
     # 👇👇👇 新增这一行 👇👇👇
     path('tools/npy/', include('npy_editor.urls', namespace='npy_editor')),
+    # 👇 新增这一行
+    path('vocab/', include('vocabulary.urls', namespace='vocabulary')),
 ]
 
 # 👇 这一段是让开发环境能访问上传的图片（头像）

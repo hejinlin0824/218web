@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'haystack', # 👈 全文检索
     'direct_messages', # 👈 私信
     'tasks', # 👈 新增这一行
-    'npy_editor'
+    'npy_editor',
+    'vocabulary', # 👈 新增这一行
 ]
 
 MIDDLEWARE = [

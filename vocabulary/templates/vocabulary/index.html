@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}英语背诵挑战{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 fw-bold mb-4">📚 英语词汇挑战</h1>
+            <p class="lead text-muted mb-5">沉浸式拼写练习，不仅要认识，还要会拼写。</p>
+            
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100 border-0 rounded-4 hover-up">
+                        <div class="card-body p-5">
+                            <div class="display-1 mb-3">📘</div>
+                            <h3 class="fw-bold">CET-4 四级词汇</h3>
+                            <p class="text-secondary">基础夯实，大学英语四级核心词库。</p>
+                            <a href="{% url 'vocabulary:practice' %}?level=CET4" class="btn btn-primary rounded-pill px-4 w-100 fw-bold">
+                                开始挑战
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100 border-0 rounded-4 hover-up">
+                        <div class="card-body p-5">
+                            <div class="display-1 mb-3">📕</div>
+                            <h3 class="fw-bold">CET-6 六级词汇</h3>
+                            <p class="text-secondary">进阶提升，大学英语六级高频词库。</p>
+                            <a href="{% url 'vocabulary:practice' %}?level=CET6" class="btn btn-warning text-white rounded-pill px-4 w-100 fw-bold">
+                                开始挑战
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5 text-muted small">
+                <i class="bi bi-info-circle me-1"></i> 拼写正确即可获得金币奖励
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-up { transition: transform 0.2s; }
+    .hover-up:hover { transform: translateY(-5px); }
+</style>
+{% endblock %}
