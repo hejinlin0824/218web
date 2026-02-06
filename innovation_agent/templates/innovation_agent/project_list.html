@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}我的创新项目{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">💡 创新 Agent 工作台</h3>
+            <p class="text-muted small mb-0">AI 辅助联邦学习论文创新点挖掘与实验设计</p>
+        </div>
+        <a href="{% url 'innovation_agent:create_project' %}" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+            <i class="bi bi-plus-lg me-1"></i> 新建项目
+        </a>
+    </div>
+
+    <div class="row g-4">
+        {% for p in projects %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow transition-all">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title fw-bold text-truncate mb-0">{{ p.title }}</h5>
+                        <span class="badge bg-light text-secondary border">
+                            {{ p.get_status_display }}
+                        </span>
+                    </div>
+                    
+                    <p class="text-muted small mb-4">
+                        <i class="bi bi-clock me-1"></i> {{ p.updated_at|date:"Y-m-d H:i" }} <br>
+                        <i class="bi bi-coin me-1"></i> 消耗 Token: {{ p.total_tokens_used }}
+                    </p>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <form action="{% url 'innovation_agent:delete_project' p.id %}" method="post" onsubmit="return confirm('⚠️ 警告：\n\n确定要彻底删除项目“{{ p.title }}”吗？\n删除后无法恢复，且所有相关文件（PDF、生成的总结等）都将永久丢失！');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger rounded-circle shadow-sm" title="删除项目" style="width: 40px; height: 40px; padding: 0;">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </form>
+
+                        <a href="{% url 'innovation_agent:workspace' p.id %}" class="btn btn-outline-primary rounded-pill flex-grow-1 shadow-sm fw-bold">
+                            继续工作 <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="display-1 text-muted opacity-25 mb-3">🤖</div>
+            <h4>还没有项目</h4>
+            <p class="text-muted">点击右上角新建，开始你的第一个科研辅助项目。</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

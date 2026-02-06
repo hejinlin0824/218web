@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}AI 模型配置{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-gradient bg-primary text-white p-4 rounded-top-4">
+                    <h4 class="mb-0 fw-bold"><i class="bi bi-robot me-2"></i> AI 助手配置</h4>
+                    <p class="mb-0 opacity-75 small">配置您的专属大模型，开启科研创新之旅</p>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">{{ form.errors }}</div>
+                        {% endif %}
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">1. 选择服务商</label>
+                            {{ form.provider }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">2. Base URL</label>
+                            {{ form.base_url }}
+                            <div class="form-text text-muted">DeepSeek 默认: https://api.deepseek.com/v1</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">3. 模型名称 (Model Name)</label>
+                            {{ form.model_name }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">4. API Key</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                                {{ form.api_key }}
+                            </div>
+                            <div class="form-text text-success"><i class="bi bi-shield-lock"></i> Key 将被高强度加密存储</div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
+                                保存配置 & 开始使用
+                            </button>
+                            <a href="{% url 'user_app:profile' %}" class="btn btn-link text-muted">返回个人中心</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

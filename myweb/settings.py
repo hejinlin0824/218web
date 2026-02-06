@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'tasks', # 👈 新增这一行
     'npy_editor',
     'vocabulary', # 👈 新增这一行
+    'innovation_agent', # 👈 新增
 ]
 
 MIDDLEWARE = [
