@@ -1,56 +1,242 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}我的创新项目{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+    /* === 页面专用样式 === */
+    :root {
+        --bg-body: #f9fafb;
+        --card-border: #e5e7eb;
+        --text-main: #111827;
+        --text-sub: #6b7280;
+        --primary-blue: #2563eb;
+    }
+
+    body {
+        background-color: var(--bg-body);
+    }
+
+    /* 页面头部 */
+    .page-header {
+        padding: 2rem 0;
+        margin-bottom: 1rem;
+    }
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.025em;
+    }
+
+    /* 项目卡片 */
+    .project-card {
+        background: #fff;
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        transition: all 0.2s ease-in-out;
+        height: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .project-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        border-color: #d1d5db;
+    }
+
+    /* 项目图标 (首字母) */
+    .project-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+        color: var(--primary-blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    /* 状态标签 */
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .status-pending { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+    .status-active { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+    .status-done { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+
+    /* 元数据 */
+    .meta-item {
+        font-size: 0.85rem;
+        color: var(--text-sub);
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+    .meta-item i {
+        margin-right: 6px;
+        opacity: 0.7;
+    }
+
+    /* 底部按钮 */
+    .card-actions {
+        margin-top: auto;
+        padding-top: 1.25rem;
+        border-top: 1px solid #f3f4f6;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-continue {
+        background-color: var(--text-main);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        flex-grow: 1;
+        transition: background 0.2s;
+        text-decoration: none;
+        text-align: center;
+    }
+    .btn-continue:hover {
+        background-color: #000;
+        color: white;
+    }
+
+    .btn-delete {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #9ca3af;
+        border: 1px solid transparent;
+        background: transparent;
+        transition: all 0.2s;
+    }
+    .btn-delete:hover {
+        background-color: #fef2f2;
+        color: #dc2626;
+        border-color: #fee2e2;
+    }
+
+    /* 新建按钮 */
+    .btn-new {
+        background-color: var(--primary-blue);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 50rem;
+        font-weight: 600;
+        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
+        transition: all 0.2s;
+    }
+    .btn-new:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.15);
+    }
+</style>
+
+<div class="container main-container">
+    
+    <div class="page-header d-flex justify-content-between align-items-end">
         <div>
-            <h3 class="fw-bold mb-1">💡 创新 Agent 工作台</h3>
-            <p class="text-muted small mb-0">AI 辅助联邦学习论文创新点挖掘与实验设计</p>
+            <h1 class="page-title mb-2">创新 Agent 工作台</h1>
+            <p class="text-muted mb-0">AI 驱动的联邦学习科研辅助引擎，从 Idea 到 Experiment。</p>
         </div>
-        <a href="{% url 'innovation_agent:create_project' %}" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
-            <i class="bi bi-plus-lg me-1"></i> 新建项目
-        </a>
+        <div>
+            <a href="{% url 'innovation_agent:create_project' %}" class="btn btn-new d-flex align-items-center">
+                <i class="bi bi-plus-lg me-2"></i> 新建项目
+            </a>
+        </div>
     </div>
 
     <div class="row g-4">
         {% for p in projects %}
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow transition-all">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="card-title fw-bold text-truncate mb-0">{{ p.title }}</h5>
-                        <span class="badge bg-light text-secondary border">
-                            {{ p.get_status_display }}
-                        </span>
+            <div class="project-card p-4">
+                
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="project-icon">
+                        {{ p.title|slice:":1"|upper }}
                     </div>
                     
-                    <p class="text-muted small mb-4">
-                        <i class="bi bi-clock me-1"></i> {{ p.updated_at|date:"Y-m-d H:i" }} <br>
-                        <i class="bi bi-coin me-1"></i> 消耗 Token: {{ p.total_tokens_used }}
-                    </p>
+                    {% if p.status == 6 %}
+                        <span class="status-badge status-done">
+                            <i class="bi bi-check-circle-fill me-1"></i> 已完成
+                        </span>
+                    {% elif p.status > 0 %}
+                        <span class="status-badge status-active">
+                            <i class="bi bi-activity me-1"></i> 进行中
+                        </span>
+                    {% else %}
+                        <span class="status-badge status-pending">待开始</span>
+                    {% endif %}
+                </div>
 
-                    <div class="d-flex gap-2 mt-3">
-                        <form action="{% url 'innovation_agent:delete_project' p.id %}" method="post" onsubmit="return confirm('⚠️ 警告：\n\n确定要彻底删除项目“{{ p.title }}”吗？\n删除后无法恢复，且所有相关文件（PDF、生成的总结等）都将永久丢失！');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger rounded-circle shadow-sm" title="删除项目" style="width: 40px; height: 40px; padding: 0;">
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
-                        </form>
-
-                        <a href="{% url 'innovation_agent:workspace' p.id %}" class="btn btn-outline-primary rounded-pill flex-grow-1 shadow-sm fw-bold">
-                            继续工作 <i class="bi bi-arrow-right ms-1"></i>
-                        </a>
+                <h5 class="fw-bold text-dark mb-2 text-truncate" title="{{ p.title }}">
+                    {{ p.title }}
+                </h5>
+                
+                <div class="mb-4">
+                    <div class="meta-item">
+                        <i class="bi bi-bezier2"></i>
+                        <span>当前阶段: {{ p.get_status_display }}</span>
                     </div>
+                    <div class="meta-item">
+                        <i class="bi bi-lightning-charge"></i>
+                        <span>消耗 Token: {{ p.total_tokens_used }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="bi bi-clock-history"></i>
+                        <span>{{ p.updated_at|timesince }}前更新</span>
+                    </div>
+                </div>
+
+                <div class="card-actions">
+                    <form action="{% url 'innovation_agent:delete_project' p.id %}" method="post" class="m-0" onsubmit="return confirm('⚠️ 警告：\n\n确定要彻底删除项目“{{ p.title }}”吗？\n删除后不可恢复！');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-delete" title="删除项目">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
+
+                    <a href="{% url 'innovation_agent:workspace' p.id %}" class="btn-continue">
+                        进入工作台 <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
                 </div>
             </div>
         </div>
         {% empty %}
-        <div class="col-12 text-center py-5">
-            <div class="display-1 text-muted opacity-25 mb-3">🤖</div>
-            <h4>还没有项目</h4>
-            <p class="text-muted">点击右上角新建，开始你的第一个科研辅助项目。</p>
+        
+        <div class="col-12 py-5">
+            <div class="text-center bg-white border rounded-4 p-5">
+                <div class="bg-light rounded-circle d-inline-flex p-4 mb-3">
+                    <i class="bi bi-stars text-primary display-4"></i>
+                </div>
+                <h3 class="fw-bold text-dark">还没有创新项目</h3>
+                <p class="text-muted mb-4" style="max-width: 500px; margin: 0 auto;">
+                    创建一个新项目，上传您的 Baseline 论文，AI 将协助您挖掘 Innovation Points 并设计实验方案。
+                </p>
+                <a href="{% url 'innovation_agent:create_project' %}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold">
+                    <i class="bi bi-plus-lg me-2"></i> 开始第一个项目
+                </a>
+            </div>
         </div>
         {% endfor %}
     </div>

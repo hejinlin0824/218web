@@ -3,261 +3,389 @@
 
 {% block title %}Innovation Workspace - {{ project.title }}{% endblock %}
 
+{# 隐藏全局侧边栏，全屏沉浸 #}
 {% block sidebar %}{% endblock %}
 
 {% block content_container %}
 <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
 <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
-    /* === 1. 布局基础 === */
+    /* === 1. 全局设定 === */
     body {
         overflow: hidden; /* 禁止主页面滚动 */
+        background-color: #f3f4f6; /* 极浅灰背景 */
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
-    
+
+    /* 主容器 */
     .workspace-wrapper {
-        height: calc(100vh - 80px); /* 适配顶部导航 */
+        height: calc(100vh - 80px);
         display: flex;
         flex-direction: column;
-        overflow: hidden;
-        border: 1px solid #dee2e6;
-        border-radius: 12px;
         background-color: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
         margin-top: 10px;
     }
 
-    /* === 2. 聊天区域样式 === */
-    .chat-container {
-        background-color: #f8f9fa;
-        height: 100%;
+    /* === 2. 顶部导航栏 === */
+    .workspace-header {
+        height: 64px;
+        border-bottom: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 24px;
+        background: #fff;
+        z-index: 10;
+        flex-shrink: 0;
+    }
+    .header-title { font-weight: 700; font-size: 1.1rem; color: #111827; }
+    .status-pill {
+        font-size: 0.75rem; font-weight: 600;
+        padding: 4px 12px; border-radius: 20px;
+        background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;
+    }
+    .token-pill {
+        font-family: 'Menlo', monospace; font-size: 0.75rem;
+        background: #f9fafb; color: #6b7280;
+        padding: 4px 10px; border-radius: 6px; border: 1px solid #e5e7eb;
+    }
+
+    /* === 3. 左侧工作流导航 (Sidebar) === */
+    .workflow-sidebar {
+        width: 260px;
+        background-color: #f9fafb;
+        border-right: 1px solid #e5e7eb;
         display: flex;
         flex-direction: column;
+        height: 100%;
+        flex-shrink: 0;
     }
     
-    /* 聊天气泡通用 */
-    .chat-bubble {
-        max-width: 85%;
-        margin-bottom: 20px;
-        position: relative;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        clear: both; /* 清除浮动 */
-        display: table; /* 包裹内容 */
+    .nav-section-title {
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        color: #9ca3af; margin: 20px 20px 10px;
     }
 
-    /* Vditor 渲染样式覆盖 (关键修复) */
-    .chat-bubble .vditor-reset {
-        font-size: 0.95rem !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-        padding: 0 !important; /* 去掉编辑器默认内边距 */
-    }
-    .chat-bubble .vditor-reset p { margin: 5px 0; }
-    .chat-bubble .vditor-reset p:last-child { margin-bottom: 0; }
-
-    /* 用户气泡 (蓝色) */
-    .user-bubble {
-        background: linear-gradient(135deg, #0d6efd, #0a58ca);
-        color: white;
-        margin-left: auto; /* 靠右 */
-        border-radius: 16px 4px 16px 16px;
+    /* 步骤项 */
+    .step-item {
+        margin: 4px 12px;
         padding: 10px 16px;
-    }
-    /* 🔥 强制用户气泡内的 Markdown 变白 🔥 */
-    .user-bubble .vditor-reset, 
-    .user-bubble .vditor-reset p, 
-    .user-bubble .vditor-reset h1, .user-bubble .vditor-reset h2, 
-    .user-bubble .vditor-reset ul, .user-bubble .vditor-reset ol, .user-bubble .vditor-reset li,
-    .user-bubble .vditor-reset strong, .user-bubble .vditor-reset span {
-        color: white !important;
-    }
-    .user-bubble .vditor-reset a { color: #e0e0e0 !important; text-decoration: underline; }
-    .user-bubble .vditor-reset code { 
-        background-color: rgba(255,255,255,0.2) !important; 
-        color: white !important; 
-    }
-
-    /* AI 气泡 (白色) */
-    .ai-bubble {
-        background-color: white;
-        border: 1px solid #e9ecef;
-        margin-right: auto; /* 靠左 */
-        border-radius: 4px 16px 16px 16px;
-        padding: 12px 18px;
-        color: #333;
-    }
-    .ai-bubble .vditor-reset { color: #2c3e50 !important; }
-
-    /* === 3. 侧边栏样式 === */
-    .file-nav-item {
-        cursor: pointer;
-        transition: all 0.2s;
         border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 4px;
+        cursor: pointer;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        color: #6c757d;
+        font-size: 0.9rem;
+        color: #4b5563;
+        transition: all 0.2s;
+        position: relative;
     }
-    .file-nav-item:hover { background-color: #f8f9fa; color: #0d6efd; }
-    .file-nav-item.active-step { background-color: #e7f1ff; color: #0d6efd; font-weight: bold; border-left: 3px solid #0d6efd; }
-    .file-nav-item.locked { opacity: 0.5; cursor: not-allowed; }
+    .step-item:hover { background-color: #e5e7eb; color: #111827; }
     
-    /* === 4. 文档抽屉 (Slide-Over) === */
-    .doc-drawer {
-        position: fixed;
-        top: 80px; /* 避开顶部导航 */
-        right: -700px;
-        width: 700px; 
-        height: calc(100vh - 80px); 
-        background: white;
-        box-shadow: -10px 0 30px rgba(0,0,0,0.15);
-        transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        z-index: 2050;
+    /* 激活状态 */
+    .step-item.active-step {
+        background-color: #fff;
+        color: #2563eb; /* 蓝色 */
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    /* 激活状态下的左侧指示条 */
+    .step-item.active-step::before {
+        content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+        height: 20px; width: 4px; border-radius: 0 4px 4px 0;
+        background-color: #2563eb;
+    }
+    
+    .step-item.locked { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .step-icon { width: 20px; display: flex; justify-content: center; margin-right: 12px; }
+
+    /* === 4. 聊天区域 (核心布局修复：Flex垂直排列) === */
+    .chat-area {
+        flex: 1;
+        background-color: #fff;
+        position: relative;
         display: flex;
-        flex-direction: column;
+        flex-direction: column; /* 垂直排列：上消息，下输入框 */
+        height: 100%; 
+        overflow: hidden; /* 防止外层滚动 */
+    }
+    
+    .messages-container {
+        flex: 1; /* 占据剩余空间 */
+        overflow-y: auto; /* 只有这里滚动 */
+        padding: 30px;
+        scroll-behavior: smooth;
+    }
+
+    /* AI 消息样式 (文档流风格) */
+    .msg-row { display: flex; margin-bottom: 24px; gap: 16px; opacity: 0; animation: fadeIn 0.3s forwards; }
+    @keyframes fadeIn { to { opacity: 1; } }
+
+    .msg-avatar {
+        width: 36px; height: 36px; flex-shrink: 0;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+    }
+    .avatar-ai { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
+    .avatar-user { background: #f3f4f6; color: #4b5563; }
+
+    .msg-content {
+        flex: 1; min-width: 0;
+        padding-top: 6px; /* 对齐头像 */
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #374151;
+    }
+    
+    /* 用户消息样式 (气泡风格) */
+    .msg-row.user-row { flex-direction: row-reverse; }
+    .msg-row.user-row .msg-content {
+        background-color: #eff6ff;
+        color: #1e3a8a;
+        padding: 12px 16px;
+        border-radius: 12px 12px 2px 12px;
+        flex: 0 1 auto; /* 自适应宽度 */
+        max-width: 80%;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    /* Vditor 样式微调 */
+    .vditor-reset { font-family: 'Inter', sans-serif !important; font-size: 0.95rem !important; }
+    .vditor-reset p { margin-bottom: 0.8em !important; }
+    .msg-row.user-row .vditor-reset { color: #1e40af !important; }
+
+    /* === 5. 底部输入框 (布局修复：改为流式布局) === */
+    .input-wrapper {
+        position: relative; /* 相对定位 */
+        flex-shrink: 0; /* 禁止被压缩 */
+        padding: 20px 30px 30px;
+        background: #fff;
+        border-top: 1px solid #f3f4f6;
+        z-index: 20;
+    }
+    .input-box {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 20px -2px rgba(0,0,0,0.08);
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        align-items: flex-end;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-box:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 20px -2px rgba(59,130,246,0.2);
+    }
+    #user-input {
+        border: none; background: transparent; padding: 12px 16px;
+        resize: none; max-height: 200px;
+        font-size: 1rem; flex: 1;
+    }
+    #user-input:focus { outline: none; box-shadow: none; }
+    
+    #btn-send {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: #3b82f6; color: white; border: none;
+        display: flex; align-items: center; justify-content: center;
+        margin: 4px; transition: all 0.2s;
+    }
+    #btn-send:hover { background: #2563eb; transform: scale(1.05); }
+    #btn-send:active { transform: scale(0.95); }
+
+    /* === 6. 文档抽屉 (Slide-Over) === */
+    .doc-drawer {
+        position: fixed; top: 0; right: -800px; width: 800px; height: 100vh;
+        background: white; box-shadow: -10px 0 40px rgba(0,0,0,0.1);
+        transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 3000; display: flex; flex-direction: column;
     }
     .doc-drawer.open { right: 0; }
-    
     .drawer-backdrop {
-        position: fixed;
-        top: 80px; left: 0; width: 100vw; height: calc(100vh - 80px);
-        background: rgba(0,0,0,0.2);
-        z-index: 2040;
-        display: none;
-        backdrop-filter: blur(2px);
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.3); backdrop-filter: blur(2px);
+        z-index: 2999; display: none; opacity: 0; transition: opacity 0.3s;
     }
-    .drawer-backdrop.show { display: block; }
+    .drawer-backdrop.show { display: block; opacity: 1; }
 
-    /* Vditor 容器修复 */
-    .drawer-body { flex: 1; min-height: 0; position: relative; }
-    #vditor-container { height: 100%; border: none !important; }
+    .drawer-header {
+        height: 64px; border-bottom: 1px solid #e5e7eb;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 24px; background: #f9fafb;
+    }
+    .drawer-body { flex: 1; overflow: hidden; position: relative; }
+    #vditor-container { height: 100% !important; border: none !important; }
+    .drawer-footer {
+        padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #fff;
+        display: flex; justify-content: flex-end; gap: 12px;
+    }
+
+    /* === 7. 加载动画 === */
+    #loading-overlay {
+        backdrop-filter: blur(4px);
+    }
+    .typing-indicator span {
+        display: inline-block; width: 6px; height: 6px; background-color: #3b82f6;
+        border-radius: 50%; animation: typing 1.4s infinite ease-in-out both;
+        margin: 0 2px;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 </style>
 
 <div class="col-12">
-    <div class="workspace-wrapper shadow-sm">
-        <div class="d-flex justify-content-between align-items-center bg-white px-4 border-bottom" style="height: 60px; flex-shrink: 0;">
+    <div class="workspace-wrapper">
+        
+        <div class="workspace-header">
             <div class="d-flex align-items-center">
-                <a href="{% url 'innovation_agent:project_list' %}" class="btn btn-light btn-sm rounded-circle me-3" title="返回列表"><i class="bi bi-arrow-left"></i></a>
+                <a href="{% url 'innovation_agent:project_list' %}" class="btn btn-light btn-sm rounded-lg me-3 border text-muted">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
                 <div>
-                    <span class="fw-bold me-2 fs-5">{{ project.title }}</span>
-                    <span class="badge bg-light text-dark border fw-normal me-2" id="project-status-badge">{{ project.get_status_display }}</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="header-title">{{ project.title }}</span>
+                        <span class="status-pill" id="project-status-badge">{{ project.get_status_display }}</span>
+                    </div>
                 </div>
             </div>
+            
             <div class="d-flex align-items-center gap-3">
-                <span class="small text-muted bg-light px-2 py-1 rounded">
-                    <i class="bi bi-coin text-warning"></i> Token: <span id="token-counter" class="fw-bold text-dark">{{ project.total_tokens_used }}</span>
-                </span>
-                <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="location.reload()">
-                    <i class="bi bi-arrow-clockwise"></i> 刷新
-                </button>
+                <div class="token-pill">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+                    <span id="token-counter">{{ project.total_tokens_used }}</span> tokens
+                </div>
+                {% if project.status == 6 %}
+                <a href="{% url 'innovation_agent:download_project' project.id %}" class="btn btn-sm btn-dark rounded-lg shadow-sm">
+                    <i class="bi bi-download me-2"></i>导出报告
+                </a>
+                {% endif %}
             </div>
         </div>
 
-        <div class="container-fluid flex-grow-1 overflow-hidden p-0">
-            <div class="row h-100 g-0">
+        <div class="d-flex flex-grow-1 overflow-hidden">
+            
+            <div class="workflow-sidebar d-none d-md-flex custom-scrollbar">
+                <div class="nav-section-title">Workflow Progress</div>
                 
-                <div class="col-auto d-none d-md-block h-100 border-end bg-white" style="width: 240px; overflow-y: auto;">
-                    <div class="p-3">
-                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Workflow</h6>
-                        <div id="file-list">
-                            <div class="file-nav-item" onclick="openDoc('base', 'Baseline Analysis')" id="nav-base">
-                                <div><i class="bi bi-file-earmark-pdf me-2"></i>Baseline</div>
-                                {% if project.status > 0 %}<i class="bi bi-check-circle-fill text-success small"></i>{% endif %}
-                            </div>
-                            <div class="file-nav-item {% if project.status < 2 %}locked{% endif %}" onclick="openDoc('innov1', 'Innovation 1')" id="nav-innov1">
-                                <div><i class="bi bi-lightbulb me-2"></i>Innov Point 1</div>
-                                {% if project.status > 2 %}<i class="bi bi-check-circle-fill text-success small"></i>{% endif %}
-                            </div>
-                            <div class="file-nav-item {% if project.status < 3 %}locked{% endif %}" onclick="openDoc('innov2', 'Innovation 2')" id="nav-innov2">
-                                <div><i class="bi bi-lightbulb-fill me-2"></i>Innov Point 2</div>
-                                {% if project.status > 3 %}<i class="bi bi-check-circle-fill text-success small"></i>{% endif %}
-                            </div>
-                            <div class="file-nav-item {% if project.status < 4 %}locked{% endif %}" onclick="openDoc('innov3', 'Innovation 3')" id="nav-innov3">
-                                <div><i class="bi bi-stars me-2"></i>Innov Point 3</div>
-                                {% if project.status > 4 %}<i class="bi bi-check-circle-fill text-success small"></i>{% endif %}
-                            </div>
-                            <div class="file-nav-item {% if project.status < 5 %}locked{% endif %}" onclick="openDoc('exp', 'Experimental Design')" id="nav-exp">
-                                <div><i class="bi bi-bar-chart-steps me-2"></i>Experiment</div>
-                                {% if project.status > 5 %}<i class="bi bi-check-circle-fill text-success small"></i>{% endif %}
-                            </div>
-                        </div>
-                        
-                        <hr class="my-3">
-                        
-                        <div id="upload-area" class="{% if project.status > 0 %}d-none{% endif %}">
-                            <input type="file" id="file-input" class="d-none" accept=".pdf" onchange="handleFileUpload()">
-                            <button class="btn btn-primary w-100 btn-sm" onclick="document.getElementById('file-input').click()">
-                                <i class="bi bi-upload me-2"></i> 上传 PDF
-                            </button>
-                        </div>
-
-                        {% if project.status == 6 %}
-                        <div class="mb-2">
-                            <a href="{% url 'innovation_agent:download_project' project.id %}" class="btn btn-success w-100 btn-sm fw-bold">
-                                <i class="bi bi-download me-2"></i> 下载完整报告
-                            </a>
-                        </div>
+                <div id="file-list">
+                    <div class="step-item" onclick="openDoc('base', 'Baseline Analysis')" id="nav-base">
+                        <div class="step-icon"><i class="bi bi-file-earmark-text"></i></div>
+                        <span>Baseline Analysis</span>
+                        {% if project.status > 0 %}
+                        <i class="bi bi-check-circle-fill text-success ms-auto"></i>
                         {% endif %}
+                    </div>
+                    
+                    <div style="margin-left: 21px; height: 16px; border-left: 1px dashed #d1d5db;"></div>
+
+                    <div class="step-item {% if project.status < 2 %}locked{% endif %}" onclick="openDoc('innov1', 'Innovation 1')" id="nav-innov1">
+                        <div class="step-icon"><i class="bi bi-1-circle"></i></div>
+                        <span>Innovation Point 1</span>
+                        {% if project.status > 2 %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% endif %}
+                    </div>
+                    <div style="margin-left: 21px; height: 16px; border-left: 1px dashed #d1d5db;"></div>
+
+                    <div class="step-item {% if project.status < 3 %}locked{% endif %}" onclick="openDoc('innov2', 'Innovation 2')" id="nav-innov2">
+                        <div class="step-icon"><i class="bi bi-2-circle"></i></div>
+                        <span>Innovation Point 2</span>
+                        {% if project.status > 3 %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% endif %}
+                    </div>
+                    <div style="margin-left: 21px; height: 16px; border-left: 1px dashed #d1d5db;"></div>
+
+                    <div class="step-item {% if project.status < 4 %}locked{% endif %}" onclick="openDoc('innov3', 'Innovation 3')" id="nav-innov3">
+                        <div class="step-icon"><i class="bi bi-3-circle"></i></div>
+                        <span>Innovation Point 3</span>
+                        {% if project.status > 4 %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% endif %}
+                    </div>
+                    
+                    <div style="margin-left: 21px; height: 16px; border-left: 1px dashed #d1d5db;"></div>
+
+                    <div class="step-item {% if project.status < 5 %}locked{% endif %}" onclick="openDoc('exp', 'Experimental Design')" id="nav-exp">
+                        <div class="step-icon"><i class="bi bi-flask"></i></div>
+                        <span>Experimental Design</span>
+                        {% if project.status > 5 %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% endif %}
                     </div>
                 </div>
 
-                <div class="col h-100 d-flex flex-column bg-light position-relative">
-                    <div class="flex-grow-1 overflow-auto p-4" id="chat-box">
-                        {% if not chat_history %}
-                        <div class="chat-bubble ai-bubble shadow-sm">
-                            <div class="d-flex align-items-center mb-2 text-primary">
-                                <i class="bi bi-robot me-2"></i> <strong>科研合伙人</strong>
-                            </div>
-                            <p class="mb-0">
-                                你好！我是你的 AI 科研合伙人。<br>
-                                {% if project.status == 0 %}👉 请先在左侧上传一篇 Baseline 论文 PDF。{% endif %}
-                            </p>
-                        </div>
-                        {% endif %}
-                        <div id="history-marker"></div>
-                    </div>
-
-                    <div class="p-3 bg-white border-top">
-                        <div class="input-group shadow-sm">
-                            <textarea id="user-input" class="form-control border-0 bg-light" rows="1" 
-                                placeholder="输入想法... (Shift+Enter 发送)" 
-                                style="resize: none; min-height: 50px; padding: 12px;"
-                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                            <button class="btn btn-primary px-4" id="btn-send"><i class="bi bi-send-fill fs-5"></i></button>
-                        </div>
-                        <div class="text-center mt-2">
-                            <small class="text-muted" id="action-hint">...</small>
-                        </div>
-                    </div>
-                    
-                    <div id="loading-overlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-none flex-column justify-content-center align-items-center" style="z-index: 50;">
-                        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-                        <h5 class="fw-bold text-dark animate__animated animate__pulse animate__infinite" id="loading-text">AI 正在深度思考...</h5>
+                <div class="mt-auto p-4 border-top">
+                    <div id="upload-area" class="{% if project.status > 0 %}d-none{% endif %}">
+                        <input type="file" id="file-input" class="d-none" accept=".pdf" onchange="handleFileUpload()">
+                        <button class="btn btn-primary w-100 rounded-lg py-2 fw-bold shadow-sm" onclick="document.getElementById('file-input').click()">
+                            <i class="bi bi-upload me-2"></i> 上传 PDF
+                        </button>
+                        <div class="text-center mt-2 text-muted small" style="font-size: 0.75rem;">支持 .pdf 格式论文</div>
                     </div>
                 </div>
             </div>
+
+            <div class="chat-area">
+                <div class="messages-container" id="chat-box">
+                    {% if not chat_history %}
+                    <div class="msg-row">
+                        <div class="msg-avatar avatar-ai"><i class="bi bi-stars"></i></div>
+                        <div class="msg-content">
+                            <h5 class="fw-bold mb-2">欢迎来到 Innovation Workspace</h5>
+                            <p>我是你的 AI 科研合伙人。我们将一起完成从 Baseline 分析到实验设计的全过程。</p>
+                            {% if project.status == 0 %}
+                            <p class="text-muted"><i class="bi bi-arrow-left me-1"></i> 请先在左侧侧边栏上传一篇 Baseline 论文 PDF 开始。</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div id="history-marker"></div>
+                </div>
+
+                <div class="input-wrapper">
+                    <div class="text-center mb-2">
+                         <span id="action-hint" class="badge bg-white border text-secondary shadow-sm fw-normal px-3 py-1 rounded-pill">...</span>
+                    </div>
+                    <div class="input-box">
+                        <textarea id="user-input" rows="1" placeholder="与 AI 合伙人对话... (Shift+Enter 换行)" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 200) + 'px'"></textarea>
+                        <button id="btn-send"><i class="bi bi-arrow-up-short fs-4"></i></button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted" style="font-size: 0.7rem;">AI generated content may be inaccurate.</small>
+                    </div>
+                </div>
+
+                <div id="loading-overlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-80 d-none flex-column justify-content-center align-items-center" style="z-index: 50;">
+                    <div class="typing-indicator mb-3">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <h6 class="fw-bold text-dark" id="loading-text">AI 正在思考...</h6>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
 <div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
 <div class="doc-drawer" id="doc-drawer">
-    <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light flex-shrink-0">
-        <div>
-            <i class="bi bi-file-earmark-richtext text-primary me-2"></i>
+    <div class="drawer-header">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-lg"><i class="bi bi-file-earmark-richtext"></i></div>
             <span class="fw-bold fs-5" id="drawer-title">Document</span>
         </div>
-        <button class="btn-close" onclick="closeDrawer()"></button>
+        <button class="btn btn-light btn-sm rounded-circle" onclick="closeDrawer()"><i class="bi bi-x-lg"></i></button>
     </div>
     
     <div class="drawer-body">
         <div id="vditor-container"></div>
     </div>
     
-    <div class="p-3 border-top bg-white d-flex justify-content-end gap-2 flex-shrink-0" id="drawer-actions">
-        <button class="btn btn-light border" onclick="closeDrawer()">关闭</button>
-        <button class="btn btn-primary fw-bold px-4" id="btn-drawer-confirm" onclick="confirmCurrentDoc()">
-            <i class="bi bi-check-lg me-1"></i> 确认定稿
+    <div class="drawer-footer">
+        <button class="btn btn-light border fw-medium px-4" onclick="closeDrawer()">取消</button>
+        <button class="btn btn-primary fw-bold px-4 shadow-sm" id="btn-drawer-confirm" onclick="confirmCurrentDoc()">
+            <i class="bi bi-check-lg me-2"></i> 确认定稿
         </button>
     </div>
 </div>
@@ -273,7 +401,7 @@
         renderUIByStep();
         initVditor();
         
-        // 🔥 核心：加载并渲染历史消息 (Markdown) 🔥
+        // 加载历史消息
         const historyData = [
             {% for chat in chat_history %}
             { role: "{{ chat.role }}", content: `{{ chat.content|escapejs }}` },
@@ -292,44 +420,44 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // === Vditor 初始化 (用于抽屉) ===
+    // === Vditor (抽屉编辑器) ===
     function initVditor() {
         vditorInstance = new Vditor('vditor-container', {
-            mode: 'ir', 
-            height: '100%',
-            cache: { enable: false },
+            mode: 'ir', height: '100%', cache: { enable: false },
             toolbar: ['emoji', 'headings', 'bold', 'italic', 'strike', 'link', '|', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|', 'quote', 'line', 'code', 'inline-code', '|', 'table', 'fullscreen', 'edit-mode'],
             preview: { math: { engine: 'KaTeX' } },
             placeholder: "AI 生成内容将显示在此处..."
         });
     }
 
-    // === 核心：聊天气泡渲染 Markdown ===
+    // === 核心：添加消息 ===
     function addChatMsg(role, text) {
         const box = document.getElementById('chat-box');
-        const div = document.createElement('div');
-        div.className = `chat-bubble ${role === 'User' ? 'user-bubble' : 'ai-bubble'} shadow-sm`;
+        const row = document.createElement('div');
+        row.className = `msg-row ${role === 'User' ? 'user-row' : 'ai-row'}`;
         
-        // 头像
-        let headerHtml = '';
-        if (role === 'AI') {
-            headerHtml = `<div class="d-flex align-items-center mb-2 text-primary small"><i class="bi bi-stars me-2"></i> <strong>Agent</strong></div>`;
-        }
-
-        // 生成唯一ID用于渲染
+        // Avatar
+        const avatar = document.createElement('div');
+        avatar.className = `msg-avatar ${role === 'User' ? 'avatar-user' : 'avatar-ai'}`;
+        avatar.innerHTML = role === 'User' ? '<i class="bi bi-person-fill"></i>' : '<i class="bi bi-stars"></i>';
+        
+        // Content
+        const content = document.createElement('div');
+        content.className = "msg-content";
+        
+        // ID for rendering
         const contentId = 'msg-content-' + Math.random().toString(36).substr(2, 9);
-        div.innerHTML = `${headerHtml}<div id="${contentId}"></div>`;
+        content.innerHTML = `<div id="${contentId}"></div>`;
         
-        box.appendChild(div);
+        row.appendChild(avatar);
+        row.appendChild(content);
+        box.appendChild(row);
 
-        // 调用 Vditor 预览引擎进行渲染
+        // Render Markdown
         Vditor.preview(document.getElementById(contentId), text, {
-            mode: 'light',
-            anchor: 0, 
+            mode: 'light', anchor: 0, 
             preview: { math: { engine: 'KaTeX' } },
-            after: () => {
-                scrollToBottom(); // 渲染完后再滚动
-            }
+            after: () => scrollToBottom()
         });
     }
 
@@ -338,13 +466,11 @@
         document.getElementById('drawer-title').innerText = title;
         document.getElementById('doc-drawer').classList.add('open');
         document.getElementById('drawer-backdrop').classList.add('show');
-        
-        // 延时赋值，防止布局计算错误
         setTimeout(() => vditorInstance.setValue(content), 100);
         
         currentEditingDocType = docType;
         const confirmBtn = document.getElementById('btn-drawer-confirm');
-        confirmBtn.classList.toggle('d-none', !canConfirm);
+        confirmBtn.style.display = canConfirm ? 'block' : 'none';
     }
 
     function closeDrawer() {
@@ -362,19 +488,17 @@
             .then(data => {
                 if(data.status === 'ok') {
                     let isCurrent = false;
-                    // 判断是否为当前正在编辑的步骤
                     if (docType === 'base' && currentStep === 1) isCurrent = true;
                     if (docType === 'innov1' && currentStep === 2) isCurrent = true;
                     if (docType === 'innov2' && currentStep === 3) isCurrent = true;
                     if (docType === 'innov3' && currentStep === 4) isCurrent = true;
                     if (docType === 'exp' && currentStep === 5) isCurrent = true;
-                    
-                    openDrawer(title, data.content || "(暂无内容)", docType, isCurrent);
+                    openDrawer(title, data.content || "", docType, isCurrent);
                 }
             });
     }
 
-    // === 业务：上传 ===
+    // === 业务逻辑：上传 ===
     function handleFileUpload() {
         const input = document.getElementById('file-input');
         if (!input.files[0]) return;
@@ -392,7 +516,7 @@
                 renderUIByStep();
                 document.getElementById('project-status-badge').innerText = "Baseline Analysis";
                 document.getElementById('upload-area').classList.add('d-none');
-                addChatMsg("AI", "✅ PDF 上传成功。");
+                addChatMsg("AI", "✅ PDF 上传成功。我已准备好阅读论文。");
                 appendSystemAction("🚀 生成 Baseline 总结", "triggerSummary()");
             } else {
                 alert(data.msg);
@@ -400,9 +524,9 @@
         });
     }
 
-    // === 业务：触发总结 ===
+    // === 业务逻辑：生成总结 ===
     window.triggerSummary = function() {
-        setLoading(true, "AI 正在阅读论文...");
+        setLoading(true, "AI 正在深度阅读论文...");
         fetch(`/innovation/api/${projectId}/generate_base_summary/`, {
             method: 'POST', headers: {'X-CSRFToken': csrfToken}
         })
@@ -413,29 +537,29 @@
                 currentStep = 2; renderUIByStep(); updateToken(data.tokens);
                 document.getElementById('project-status-badge').innerText = "Innovation 1";
                 openDrawer("Baseline Summary", data.content, 'base', false);
-                addChatMsg("AI", "✅ Baseline 分析完成 (请见右侧抽屉)。\n\n现在开始 **创新点 1** 的构思。请告诉我你的想法，或者让我推荐方向。");
+                addChatMsg("AI", "✅ Baseline 分析完成 (请查看右侧文档)。\n\n现在我们开始构思 **Innovation Point 1**。你可以直接告诉我你的想法，或者让我基于 Baseline 的弱点进行推荐。");
             } else {
                 alert("生成失败: " + data.msg);
             }
         });
     }
 
-    // === 业务：发送对话 (Draft Protocol) ===
+    // === 业务逻辑：对话 ===
     function sendChat() {
         const input = document.getElementById('user-input');
         const text = input.value.trim();
         if(!text) return;
         
-        // 路由拦截
+        // 简单路由拦截
         if (currentStep === 1) { 
             if(text.includes("生成")) triggerSummary(); 
-            else addChatMsg("AI", "请先生成 Baseline 总结。"); 
+            else addChatMsg("AI", "请点击按钮生成 Baseline 总结。"); 
             input.value=''; return; 
         }
         if (currentStep === 5 && text.includes("实验")) { triggerExperiment(); input.value=''; return; }
         if (![2, 3, 4].includes(currentStep)) {
             addChatMsg("User", text);
-            addChatMsg("AI", "当前阶段不支持创新点对话。");
+            addChatMsg("AI", "当前阶段不需要对话，请检查左侧进度。");
             input.value = ''; return;
         }
 
@@ -455,7 +579,6 @@
                 updateToken(data.tokens);
                 addChatMsg("AI", data.chat_content);
                 
-                // 🔥 如果是草稿模式，显示查看按钮
                 if (data.is_draft) {
                     const stepName = `Innovation ${currentStep - 1}`;
                     const docKey = `innov${currentStep - 1}`;
@@ -468,7 +591,7 @@
         });
     }
 
-    // === 业务：实验设计 ===
+    // === 业务逻辑：生成实验 ===
     window.triggerExperiment = function() {
         setLoading(true, "正在设计实验方案...");
         fetch(`/innovation/api/${projectId}/generate_experiment/`, {
@@ -486,7 +609,7 @@
         });
     }
 
-    // === 业务：确认定稿 ===
+    // === 业务逻辑：确认文档 ===
     window.confirmCurrentDoc = function() {
         if (!confirm("确认定稿？这将保存内容并进入下一阶段。")) return;
         const content = vditorInstance.getValue();
@@ -514,7 +637,6 @@
                 }
                 if (currentStep === 6) {
                     addChatMsg("AI", "🎉 恭喜！项目已全部完成。");
-                    // 刷新页面以显示下载按钮 (简单处理)
                     setTimeout(() => location.reload(), 1500);
                 }
             } else {
@@ -523,13 +645,13 @@
         });
     }
 
-    // === 辅助工具 ===
+    // === UI 工具函数 ===
     function renderUIByStep() {
         const navItems = {
             1: 'nav-base', 2: 'nav-innov1', 3: 'nav-innov2', 
             4: 'nav-innov3', 5: 'nav-exp', 6: 'nav-exp'
         };
-        document.querySelectorAll('.file-nav-item').forEach(el => el.classList.remove('active-step'));
+        document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active-step'));
         for (let s = 1; s <= currentStep && s <= 5; s++) {
             const el = document.getElementById(navItems[s]);
             if(el) el.classList.remove('locked');
@@ -539,10 +661,7 @@
         } else if (currentStep > 5) {
             document.getElementById('nav-exp').classList.add('active-step');
         }
-        updateActionHint();
-    }
-
-    function updateActionHint() {
+        
         const hint = document.getElementById('action-hint');
         if (currentStep === 0) hint.innerText = "👉 请先上传 PDF";
         else if (currentStep === 1) hint.innerText = "👉 点击“生成 Baseline 总结”";
@@ -553,10 +672,11 @@
 
     function setLoading(isLoading, text="加载中...") {
         const overlay = document.getElementById('loading-overlay');
+        const textEl = document.getElementById('loading-text');
         if(isLoading) {
             overlay.classList.remove('d-none');
             overlay.classList.add('d-flex');
-            overlay.querySelector('h5').innerText = text;
+            textEl.innerText = text;
         } else {
             overlay.classList.add('d-none');
             overlay.classList.remove('d-flex');
@@ -566,7 +686,7 @@
     function appendSystemAction(text, func) {
         const box = document.getElementById('chat-box');
         const div = document.createElement('div');
-        div.className = "text-center mb-3";
+        div.className = "text-center my-3";
         div.innerHTML = `<button class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm" onclick="${func}">${text}</button>`;
         box.appendChild(div);
         scrollToBottom();
