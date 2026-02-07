@@ -1,60 +1,326 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}AI 模型配置{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow-lg border-0 rounded-4">
-                <div class="card-header bg-gradient bg-primary text-white p-4 rounded-top-4">
-                    <h4 class="mb-0 fw-bold"><i class="bi bi-robot me-2"></i> AI 助手配置</h4>
-                    <p class="mb-0 opacity-75 small">配置您的专属大模型，开启科研创新之旅</p>
+<style>
+    /* === OpenAI 风格化样式 === */
+    :root {
+        --openai-bg: #f9fafb; /* 极浅灰背景 */
+        --openai-border: #e5e7eb; /* 极细淡边框 */
+        --openai-text-main: #111827; /* 深黑文字 */
+        --openai-text-sub: #6b7280; /* 次级灰色文字 */
+        --primary-blue: #2563eb; /* 专业蓝 */
+    }
+
+    /* 整体背景 */
+    .page-wrapper {
+        background-color: var(--openai-bg);
+        min-height: calc(100vh - 60px); /* 减去导航栏大约高度 */
+        padding-bottom: 60px;
+    }
+
+    /* 宽敞的主容器 */
+    .main-container {
+        max-width: 1024px; /* 类似 OpenAI 的宽度设定，比普通 container 更宽 */
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    /* 页面标题区 */
+    .page-header {
+        margin-bottom: 40px;
+        max-width: 800px;
+    }
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--openai-text-main);
+        letter-spacing: -0.025em;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .page-subtitle {
+        font-size: 1.05rem;
+        color: var(--openai-text-sub);
+        line-height: 1.6;
+    }
+
+    /* 主要内容平板 */
+    .content-panel {
+        background: #fff;
+        border: 1px solid var(--openai-border);
+        border-radius: 12px;
+        padding: 40px;
+        /* 移除明显的阴影，使用极简边框 */
+    }
+
+    /* 表单控件优化 */
+    .form-section {
+        margin-bottom: 32px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--openai-border);
+    }
+    .form-section:last-child {
+        border-bottom: none;
+    }
+
+    .form-label-lg {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--openai-text-main);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between; /* 让快速填入按钮靠右 */
+    }
+
+    .form-control, .form-select {
+        border: 1px solid #d1d5db; /* 稍深一点的边框增加质感 */
+        border-radius: 8px;
+        padding: 0.875rem 1rem; /* 更大的内边距 */
+        font-size: 1rem;
+        color: var(--openai-text-main);
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); /* 更柔和的聚焦光环 */
+        outline: none;
+    }
+
+    /* 输入框图标组 - 扁平化 */
+    .input-group-text {
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        border-right: none;
+        color: var(--openai-text-sub);
+        border-radius: 8px 0 0 8px;
+    }
+    .input-group .form-control {
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+    }
+     .input-group .form-control:focus {
+        border-color: #d1d5db; /* 聚焦时保持原有边框色，依靠 shadow */
+        z-index: 3;
+    }
+
+
+    /* 帮助文本 */
+    .form-text-helper {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--openai-text-sub);
+        display: flex;
+        align-items: center;
+    }
+
+    /* 快速填入链接按钮 */
+    .btn-quick-link {
+        font-size: 0.9rem;
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #eff6ff;
+    }
+    .btn-quick-link:hover {
+        background: #dbeafe;
+        text-decoration: none;
+    }
+
+    /* 主要按钮 */
+    .btn-primary-lg {
+        background-color: var(--primary-blue);
+        border: none;
+        padding: 1rem 2rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .btn-primary-lg:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
+    }
+    
+    /* 步骤序号 */
+    .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px; height: 28px;
+        background: #f3f4f6;
+        color: var(--openai-text-main);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-right: 12px;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .main-container { padding: 20px 15px; }
+        .content-panel { padding: 25px; }
+        .page-title { font-size: 1.75rem; }
+    }
+</style>
+
+<div class="page-wrapper">
+    <div class="main-container animate__animated animate__fadeIn">
+        
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="bi bi-robot me-3 text-primary"></i>
+                模型服务配置
+            </h1>
+            <p class="page-subtitle">
+                配置您的大语言模型 API 连接信息。这些设置将用于驱动系统内的所有 AI 智能体和辅助功能。
+            </p>
+        </div>
+
+        <div class="content-panel">
+            
+            {% if form.errors %}
+                <div class="alert alert-danger border-0 bg-danger bg-opacity-10 text-danger rounded-3 d-flex align-items-center mb-4 p-3">
+                    <i class="bi bi-exclamation-circle-fill me-3 fs-5"></i>
+                    <div>请检查下方标红的字段并更正。</div>
                 </div>
-                <div class="card-body p-4 p-md-5">
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        {% if form.errors %}
-                            <div class="alert alert-danger">{{ form.errors }}</div>
-                        {% endif %}
+            {% endif %}
 
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">1. 选择服务商</label>
+            <form method="post" id="configForm">
+                {% csrf_token %}
+
+                <div class="form-section">
+                    <label class="form-label-lg">
+                        <div><span class="step-num">1</span>选择服务提供商</div>
+                    </label>
+                    <div class="row">
+                        <div class="col-md-8 col-lg-6">
                             {{ form.provider }}
+                            <div class="form-text-helper mt-2">
+                                <i class="bi bi-info-circle me-2"></i>
+                                推荐使用 DeepSeek 以获得最佳的成本效益表现。
+                            </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">2. Base URL</label>
-                            {{ form.base_url }}
-                            <div class="form-text text-muted">DeepSeek 默认: https://api.deepseek.com/v1</div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">3. 模型名称 (Model Name)</label>
-                            {{ form.model_name }}
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">4. API Key</label>
+                <div class="form-section">
+                    <label class="form-label-lg">
+                        <div><span class="step-num">2</span>API 接入地址 (Base URL)</div>
+                        <span class="btn-quick-link" onclick="fillDeepSeek()">
+                            <i class="bi bi-magic me-1"></i> 填入 DeepSeek 默认值
+                        </span>
+                    </label>
+                    <div class="row">
+                        <div class="col-md-10">
                             <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                                <span class="input-group-text"><i class="bi bi-link-45deg fs-5"></i></span>
+                                {{ form.base_url }}
+                            </div>
+                            <div class="form-text-helper">
+                                用于发起请求的 API 服务器地址，请确保包含协议头 (如 https://)。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label-lg">
+                        <div><span class="step-num">3</span>模型名称 (Model Name)</div>
+                    </label>
+                    <div class="row">
+                        <div class="col-md-8 col-lg-6">
+                             <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-box-seam fs-5"></i></span>
+                                {{ form.model_name }}
+                            </div>
+                            <div class="form-text-helper">
+                                您希望调用的具体模型标识符，例如: <code>deepseek-chat</code>, <code>gpt-4</code>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section border-bottom-0">
+                    <label class="form-label-lg">
+                        <div><span class="step-num">4</span>API 密钥 (Secret Key)</div>
+                    </label>
+                    <div class="row">
+                        <div class="col-md-10">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-key text-warning fs-5"></i></span>
                                 {{ form.api_key }}
                             </div>
-                            <div class="form-text text-success"><i class="bi bi-shield-lock"></i> Key 将被高强度加密存储</div>
+                            <div class="form-text-helper text-success gap-2 mt-3 py-2 px-3 bg-success bg-opacity-10 rounded-3 d-inline-flex align-items-center">
+                                <i class="bi bi-shield-fill-check fs-5"></i>
+                                <span>安全承诺：您的密钥将使用工业级标准进行加密存储，平台绝不会以明文形式展示或泄露。</span>
+                            </div>
                         </div>
-
-                        <div class="d-grid gap-2 mt-5">
-                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
-                                保存配置 & 开始使用
-                            </button>
-                            <a href="{% url 'user_app:profile' %}" class="btn btn-link text-muted">返回个人中心</a>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="mt-5 pt-4 border-top d-flex align-items-center gap-4">
+                    <button type="submit" class="btn btn-primary btn-primary-lg shadow-sm">
+                        保存配置并启用
+                    </button>
+                    <a href="{% url 'user_app:profile' %}" class="text-decoration-none text-muted fw-bold px-3">
+                        取消
+                    </a>
+                </div>
+
+            </form>
         </div>
+        
     </div>
 </div>
+
+<script>
+    // 自动为 Django 生成的表单字段添加 Bootstrap 类
+    document.addEventListener("DOMContentLoaded", function() {
+        const inputs = document.querySelectorAll('#configForm input:not([type=checkbox]), #configForm select');
+        inputs.forEach(input => {
+            input.classList.add('form-control');
+            if (input.tagName === 'SELECT') {
+                input.classList.add('form-select');
+                input.classList.remove('form-control');
+                // 移除默认的 select 箭头背景，使用更现代的样式 (可选)
+                // input.style.backgroundImage = 'none';
+            }
+             if (input.tagName === 'INPUT') {
+                 input.setAttribute('placeholder', '...'); // 添加一个默认占位符让输入框看起来不那么空
+             }
+        });
+    });
+
+    // 快速填入 DeepSeek 配置
+    function fillDeepSeek() {
+        const baseUrlInput = document.querySelector('input[name="base_url"]');
+        const modelInput = document.querySelector('input[name="model_name"]');
+        const providerSelect = document.querySelector('select[name="provider"]');
+        
+        if (baseUrlInput) baseUrlInput.value = "https://api.deepseek.com/v1";
+        if (modelInput) modelInput.value = "deepseek-chat";
+        if (providerSelect) providerSelect.value = "deepseek";
+        
+        // 视觉反馈：聚焦并闪烁一下
+        if(baseUrlInput) {
+            baseUrlInput.focus();
+            baseUrlInput.style.transition = 'none';
+            baseUrlInput.style.backgroundColor = '#eff6ff';
+            setTimeout(() => {
+                baseUrlInput.style.transition = '';
+                baseUrlInput.style.backgroundColor = '';
+                 baseUrlInput.blur();
+            }, 300);
+        }
+    }
+</script>
 {% endblock %}
