@@ -100,17 +100,19 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto ms-lg-4 mb-2 mb-lg-0">
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'home' %}">大厅</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'community:post_list' %}">社区</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'Github_trend:index' %}">趋势</a></li>
-                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'tasks:my_tasks' %}">任务</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'core:intro' %}">实验室概览</a></li>
                 <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'vocabulary:index' %}">背单词</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'npy_editor:home' %}">NPY 数据工坊</a></li>
+                <li class="nav-item"><a class="nav-link nav-link-custom" href="{% url 'innovation_agent:project_list' %}">创新点工具</a></li>
                 <li class="nav-item dropdown">
                     <a class="nav-link nav-link-custom dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         更多
                     </a>
                     <ul class="dropdown-menu border-0 shadow-sm rounded-3 mt-2">
                         <li><a class="dropdown-item py-2" href="{% url 'core:intro' %}">🏫 实验室概览</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'npy_editor:home' %}">📈 NPY 数据工坊</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'community:post_list' %}">🏫 社区</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'Github_trend:index' %}">🏫 Github趋势</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'tasks:my_tasks' %}">🏫 任务中心</a></li>
                     </ul>
                 </li>
             </ul>

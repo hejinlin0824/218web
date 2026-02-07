@@ -96,37 +96,64 @@ def generate_baseline_summary(project_id, user):
     return summary
 
 def refine_innovation(project_id, user, user_idea, innov_index=1):
-    """Step 3/4: 创新点构思 (核心：支持聊天 vs 草稿协议)"""
+    """
+    Step 3/4: 创新点构思 (核心逻辑升级)
+    """
     project = InnovationProject.objects.get(id=project_id, user=user)
     
     # 1. 记录用户输入
     ProjectChatHistory.objects.create(project=project, role='user', content=user_idea)
 
-    # 2. 准备上下文
-    prev_innovs = ""
-    if innov_index > 1: prev_innovs += f"\n--- Innov 1 ---\n{project.innov1_md_content}\n"
-    if innov_index > 2: prev_innovs += f"\n--- Innov 2 ---\n{project.innov2_md_content}\n"
-    if not prev_innovs: prev_innovs = "无"
-
-    # 3. 调用 AI
-    prompt = PromptManager.get_innovation_prompt(innov_index, project.base_md_content, prev_innovs, user_idea)
-    llm = LLMService(user)
-    raw_response = llm.call_model([{"role": "user", "content": prompt}], project=project)
+    # 2. 🔥 关键逻辑：构建动态上下文 (Memory Construction) 🔥
+    # 告诉 AI 之前已经确定了什么，防止它提出重复或冲突的方案
+    prev_innovs_context = "暂无前序创新点"
     
-    # 4. 🔥 解析 <DRAFT> 标签 🔥
+    if innov_index == 2:
+        # 构思点2时，必须知道点1是什么
+        prev_innovs_context = f"""
+        [已锁定的 Innovation 1]:
+        {project.innov1_md_content}
+        """
+    elif innov_index == 3:
+        # 构思点3时，必须知道点1和点2
+        prev_innovs_context = f"""
+        [已锁定的 Innovation 1]:
+        {project.innov1_md_content}
+        
+        [已锁定的 Innovation 2]:
+        {project.innov2_md_content}
+        """
+
+    # 3. 调用 AI (注入完整上下文)
+    # 注意：这里调用的是新版 PromptManager，它会自动判断是“主动建议”还是“被动润色”
+    prompt = PromptManager.get_innovation_prompt(
+        stage_num=innov_index,
+        base_content=project.base_md_content, # 这里包含了对 Baseline 的完整吐槽
+        prev_innovations=prev_innovs_context,
+        user_idea=user_idea
+    )
+
+    llm = LLMService(user)
+    # 使用系统提示词 + 用户提示词的组合
+    raw_response = llm.call_model([
+        {"role": "system", "content": PromptManager.CORE_SYSTEM_CONTEXT}, # 注入宪法
+        {"role": "user", "content": prompt}
+    ], project=project)
+    
+    # 4. 解析 <DRAFT> 标签
+    # (这部分逻辑保持不变，用于分离对话和文档)
     draft_match = re.search(r'<DRAFT>(.*?)</DRAFT>', raw_response, re.DOTALL)
     
     response_data = {
-        'chat_content': raw_response, # 默认显示全部
+        'chat_content': raw_response,
         'draft_content': None,
         'is_draft': False
     }
 
     if draft_match:
-        # A. 提取到草稿 -> 存库，前端弹窗
         draft_content = draft_match.group(1).strip()
         
-        # 存入数据库对应字段 (作为草稿)
+        # 自动保存草稿到对应字段
         if innov_index == 1: project.innov1_md_content = draft_content
         elif innov_index == 2: project.innov2_md_content = draft_content
         elif innov_index == 3: project.innov3_md_content = draft_content
@@ -134,18 +161,11 @@ def refine_innovation(project_id, user, user_idea, innov_index=1):
         
         response_data['is_draft'] = True
         response_data['draft_content'] = draft_content
-        
-        # 聊天框只显示 <DRAFT> 之外的引导语
+        # 移除标签，只显示聊天部分
         chat_part = raw_response.replace(draft_match.group(0), "").strip()
-        if not chat_part: chat_part = "已为你生成详细方案草稿，请在右侧查看。"
-        response_data['chat_content'] = chat_part
-        
-    else:
-        # B. 没提取到 -> 纯聊天模式
-        response_data['is_draft'] = False
-        # 不存库，只记录聊天历史
-    
-    # 5. 记录 AI 回复到历史
+        response_data['chat_content'] = chat_part if chat_part else "已为您生成详细方案文档，请在右侧查看并确认。"
+
+    # 5. 记录 AI 回复
     ProjectChatHistory.objects.create(
         project=project, role='assistant',
         content=response_data['chat_content']

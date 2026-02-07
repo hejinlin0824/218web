@@ -1,196 +1,219 @@
 import textwrap
 from datetime import datetime
-from typing import Dict, Optional
+import re
 
 class PromptManager:
     """
-    提示词管理器 v3.1 (Draft Protocol Edition)
-    核心特性：引入 <DRAFT> 标签协议，分离“对话思考”与“文档生成”。
+    提示词管理器 v6.1 (Syntax Fix Edition)
+    修复了 f-string 中 LaTeX 大括号需要双写转义的问题。
     """
 
     # =============================================================================
-    # 0. System Context (核心宪法)
+    # 0. 核心宪法 (The Constitution)
     # =============================================================================
-    CORE_SYSTEM_CONTEXT = textwrap.dedent("""
+    # 这里使用 r"""...""" (纯 Raw String)，不需要变量替换，所以单大括号 { } 是安全的
+    CORE_SYSTEM_CONTEXT = textwrap.dedent(r"""
         <role_definition>
-        你是一位计算机科学（联邦学习/分布式优化）领域的**顶尖科研合作者 (Co-author / PI)**。
+        你代号 "Co-Author"，是用户的**首席科研合伙人 (PI)**。
+        目标：冲击 **NeurIPS/ICLR/CVPR** 级别的顶级会议。
+        领域：联邦学习 (Federated Learning) 与分布式优化。
         
         **你的核心特质：**
-        1. **建设性 (Constructive)**：帮助用户把“模糊的直觉”转化为“严谨的数学论文”。如果想法不成熟，你要修补它、完善它。
-        2. **数学直觉 (Math Intuition)**：用户可能只说“我想用动量”，你要立刻写出 $v_{t+1} = \beta v_t + (1-\beta) g_t$ 并解释其在当前 FL 场景下的具体形态。
-        3. **系统性 (Systematic)**：时刻关注 Innovation 1, 2, 3 之间的联系。
+        1.  **数学直觉**：不要说“我们要考虑梯度差异”，要直接写出 $\|g_i - g_{global}\|$。
+        2.  **果断**：用户迷茫时，直接甩出 3 个具体的数学方案，不要反问。
+        3.  **连贯性**：时刻维护 Storyline。Innovation 1, 2, 3 必须是由于逻辑缺陷而自然引出的，不能是拼凑的。
         </role_definition>
 
         <output_rules>
-        1. **Language**: 全程使用**中文**与用户交流。
-        2. **Format**: 关键数学公式必须使用 LaTeX 格式（如 $\mathcal{L}(\\theta)$）。
+        1.  **语言**：全程使用**中文**进行思考和交流。
+        2.  **公式**：必须使用 LaTeX 格式，例如 $\mathcal{L}(\theta)$。
+        3.  **DRAFT 协议**：
+            - 如果你提供了具体的、可写入论文的方案，必须用 `<DRAFT>...</DRAFT>` 包裹 Markdown 内容。
+            - 聊天闲聊或简单建议则不需要标签。
         </output_rules>
-
-        <interaction_protocol> (CRITICAL)
-        你有两种输出模式，请根据用户意图切换：
-        
-        **模式 A：对话讨论 (Chat Mode)**
-        - 当用户还在构思、询问建议、或者你的想法需要修改时。
-        - 直接输出文本，**不要**包含 Markdown 的大标题或长篇大论的文档结构。
-        - 仅在聊天框与用户交互。
-
-        **模式 B：正式起草 (Draft Mode)**
-        - 当用户明确表示“确认”、“生成文档”、“写下来”，或者你认为当前方案已经成熟可以形成文档时。
-        - **必须**将正式的 Markdown 文档内容包裹在 `<DRAFT>` 和 `</DRAFT>` 标签中。
-        - 格式示例：
-          好的，根据讨论，这是定稿方案：
-          <DRAFT>
-          # 创新点标题
-          ## 数学推导
-          ...
-          </DRAFT>
-        - 只有包裹在标签里的内容会被写入右侧的文档工作台。
-        </interaction_protocol>
     """).strip()
-
-    # =============================================================================
-    # 辅助函数
-    # =============================================================================
-    @staticmethod
-    def _get_today() -> str:
-        return datetime.now().strftime("%Y-%m-%d")
 
     @staticmethod
     def _sanitize(text: str) -> str:
-        if not text: return "（暂无内容）"
-        # 防止 Python format 报错，转义大括号
+        if not text: return "（暂无信息）"
+        # 转义大括号防止 Python format 报错
         return text.replace("{", "{{").replace("}", "}}")
 
-    @staticmethod
-    def _get_system_context() -> str:
-        return PromptManager.CORE_SYSTEM_CONTEXT
-
     # =============================================================================
-    # 1. Phase 1: Baseline 总结 (直接生成)
+    # 1. Baseline 深度剖析
     # =============================================================================
     @staticmethod
     def get_baseline_prompt(text_content: str) -> str:
-        sys_ctx = PromptManager._get_system_context()
-        safe_text = PromptManager._sanitize(text_content[:50000])
+        safe_text = PromptManager._sanitize(text_content[:60000]) 
+        
+        # 这里使用 fr"""..."""，其中的 LaTeX 大括号必须双写 {{ }}
+        # 但 baseline prompt 里主要用到的是 \min F(w)，没有大括号，所以相对安全
+        # 为了保险，w_{t+1} 这种写法需要写成 w_{{t+1}}
+        return fr"""
+        {PromptManager.CORE_SYSTEM_CONTEXT}
 
-        mission_prompt = textwrap.dedent(f"""
-            <current_mission>
-            用户上传了一篇 Baseline 论文。请你作为合伙人，总结它并**敏锐地发现它留下的坑（Research Gaps）**。
-            这是一次性生成任务，请直接输出详细的 Markdown 文档，无需使用 DRAFT 标签。
-            </current_mission>
+        <mission>
+        用户上传了一篇 Baseline 论文。请你作为审稿人，**极其苛刻地**找出它的死穴（Research Gaps）。
+        这直接决定了我们后续 Innovation 的攻击方向。
+        </mission>
 
-            <raw_content_excerpt>
-            {safe_text}
-            ...
-            </raw_content_excerpt>
+        <raw_paper_content>
+        {safe_text}
+        ...
+        </raw_paper_content>
 
-            <output_requirement>
-            请生成一份 `base.md`，包含：
-            1. **核心痛点 (Problem Statement)**：用数学语言定义它解决了什么（如 $\\min F(w)$）。
-            2. **算法骨架 (Algorithm Skeleton)**：用伪代码或公式描述它的核心步骤。
-            3. **潜在缺陷 (Critical Gaps)**：**这是最重要的一步**。请列出 3 个它没解决好的问题（例如：是否忽略了 Non-IID？通信效率是否太低？隐私保护是否不够？）。这将是我们后续创新的直接靶子。
-            </output_requirement>
-        """).strip()
-
-        return f"{sys_ctx}\n\n{mission_prompt}"
+        <output_requirement>
+        请直接输出一份 Markdown 文档（无需 DRAFT 标签），包含：
+        1.  **Summary**: 一句话概括其核心机制。
+        2.  **Mathematical Form**: 写出它的核心更新公式 $w_{{t+1}} \leftarrow \dots$。
+        3.  **Critical Weaknesses (至关重要)**: 
+            列出 3 个它解决不了的场景（例如：Non-IID 程度极高时收敛慢？通信带宽受限时效率低？对抗攻击下脆弱？）。
+            **请确保这三个弱点是可以通过数学手段改进的。**
+        </output_requirement>
+        """
 
     # =============================================================================
-    # 2. Phase 2: 创新点挖掘 (支持 DRAFT 协议)
+    # 2. 创新点生成 (双模式引擎)
     # =============================================================================
     @staticmethod
     def get_innovation_prompt(stage_num: int, base_content: str, prev_innovations: str, user_idea: str) -> str:
-        sys_ctx = PromptManager._get_system_context()
-        
         base_summary = PromptManager._sanitize(base_content)
         prev_innovs = PromptManager._sanitize(prev_innovations)
-        idea = PromptManager._sanitize(user_idea)
+        user_input = PromptManager._sanitize(user_idea)
 
-        # 智能判断模式
-        is_brainstorm_mode = len(user_idea) < 10 or "推荐" in user_idea or "不知道" in user_idea
+        stage_instruction = ""
+        if stage_num == 1:
+            stage_instruction = r"""
+            **Stage 1: The Foundation (Core Methodology)**
+            - 目标：直接攻击 Baseline 最致命的弱点。
+            - 要求：必须包含核心的数学改动（如修改 Loss，修改 Aggregation Rule）。
+            """
+        elif stage_num == 2:
+            stage_instruction = r"""
+            **Stage 2: The Enhancement (Optimization)**
+            - 目标：**填坑**。Innovation 1 虽然有效，但一定引入了新的副作用（如计算量增加、引入了新的超参数、通信变大）。
+            - 要求：Innovation 2 必须是为了解决 Innovation 1 的副作用而存在的。
+            """
+        elif stage_num == 3:
+            stage_instruction = r"""
+            **Stage 3: The Unification (System/Theory)**
+            - 目标：**升华**。将 Baseline + Innov 1 + Innov 2 封装成一个完整的框架。
+            - 建议方向：自适应机制（Adaptive）、理论收敛界证明、或者针对特定场景（如半监督/无监督）的扩展。
+            """
 
-        brainstorm_instruction = ""
-        if is_brainstorm_mode:
-            brainstorm_instruction = """
-            **用户意图分析：** 用户似乎没有具体思路，或者请求建议。
-            **行动：** 请进入 **对话讨论模式**。基于 Baseline 的 Gaps，主动提出 2-3 个具体的数学创新方向供用户选择。**不要生成 DRAFT**。
+        # 意图判断
+        is_passive = len(user_input) < 10 or any(k in user_input for k in ["推荐", "不知道", "建议", "想不出来", "帮我", "迷茫", "没思路"])
+        
+        task_prompt = ""
+        
+        if is_passive:
+            # === 模式 A：主动提案 (Brainstorm Mode) ===
+            # 使用 fr string，注意 LaTeX 大括号要双写 {{ }}
+            task_prompt = fr"""
+            <user_state>
+            用户当前处于迷茫状态。作为 PI，你需要**直接做决定**。
+            **严禁回复**：“我们可以从以下角度考虑...”。
+            **必须回复**：“基于 Baseline 的缺陷，我为你设计了三条技术路线，请选择：”
+            </user_state>
+
+            <action_required>
+            提供 3 个 **差异化** 的具体方案（不要生成 DRAFT，只在对话中列出）：
+            
+            **Option 1 (稳健型)**: 基于统计学方法的改进 (e.g., Variance Reduction, Proximal Term)。
+            **Option 2 (结构型)**: 改变网络交互方式 (e.g., Knowledge Distillation, Split Learning)。
+            **Option 3 (激进型)**: 引入新范式 (e.g., Contrastive Learning, Graph Neural Networks)。
+            
+            对于每个选项，请用一句话解释：
+            1. **核心数学直觉** (Key Insight)
+            2. **它如何契合我们的 Storyline**
+            </action_required>
             """
         else:
-            brainstorm_instruction = """
-            **用户意图分析：** 用户提出了初步想法。
-            **行动：** 1. 首先评估想法。如果想法太简单或有误，请在 **对话讨论模式** 指出并建议修改。
-            2. 如果想法可行，或者用户明确要求生成/确认，请进入 **正式起草模式**，将完善后的数学推导包裹在 `<DRAFT>` 标签中输出。
+            # === 模式 B：深度润色 (Refine Mode) ===
+            # 这里包含大量 LaTeX，必须小心处理 {{ }}
+            task_prompt = fr"""
+            <user_state>
+            用户提出了一个想法："{user_input}"
+            </user_state>
+
+            <action_required>
+            请评估这个想法。
+            
+            **情况 1：如果想法太简单/有逻辑漏洞**
+            请直接指出：“这个想法在 Non-IID 场景下可能不成立，因为...”，并给出具体的修正建议（Fix）。
+            
+            **情况 2：如果想法可行**
+            请直接进入 **起草模式**，将其转化为论文片段。
+            使用 `<DRAFT>` 标签包裹内容。格式如下：
+            
+            <DRAFT>
+            # Innovation {stage_num}: [给它起一个高大上的英文缩写]
+            
+            ## 1. Motivation (The "Why")
+            *结合 Baseline 的痛点，我们提出...*
+            
+            ## 2. Methodology (The "How")
+            *（此处必须包含核心公式，定义所有符号）*
+            Let $\mathcal{{D}}_k$ be the dataset of client $k$...
+            The proposed objective function is:
+            $$
+            \min_w \sum_{{k=1}}^K p_k F_k(w) + \lambda \mathcal{{R}}(w)
+            $$
+            
+            ## 3. Theoretical/Intuitive Justification
+            *为什么这个改动有效？（从梯度、方差或信息的角度解释）*
+            </DRAFT>
+            </action_required>
             """
 
-        mission_prompt = textwrap.dedent(f"""
-            <project_status>
-            当前正在构思：创新点 #{stage_num}
-            </project_status>
+        return fr"""
+        {PromptManager.CORE_SYSTEM_CONTEXT}
 
-            <context>
-            **Baseline 分析:**
-            {base_summary}
+        <context>
+        **Current Context**: {stage_instruction}
+        
+        **Previous Innovations**:
+        {prev_innovs}
+        
+        **Baseline Analysis**:
+        {base_summary}
+        </context>
 
-            **已定稿的前序创新:**
-            {prev_innovs}
-            </context>
-
-            <user_input>
-            "{idea}"
-            </user_input>
-
-            <instruction>
-            {brainstorm_instruction}
-            
-            **如果进入 Draft Mode，DRAFT 内部结构要求:**
-            <DRAFT>
-            # 创新点 #{stage_num} 方案详情
-            ## 1. 核心洞察 (Insight)
-            ## 2. 数学建模 (Mathematical Formulation)
-            *(修正后的目标函数与更新规则)*
-            ## 3. 理论支撑 (Why it works)
-            ## 4. 与系统的融合
-            </DRAFT>
-            </instruction>
-        """).strip()
-
-        return f"{sys_ctx}\n\n{mission_prompt}"
+        {task_prompt}
+        """
 
     # =============================================================================
-    # 3. Phase 3: 实验设计 (直接 DRAFT)
+    # 3. 实验设计 (定制化消融实验)
     # =============================================================================
     @staticmethod
     def get_experiment_prompt(base_content: str, innov1: str, innov2: str, innov3: str) -> str:
-        sys_ctx = PromptManager._get_system_context()
+        summary = PromptManager._sanitize(f"Base: {base_content}\n\nInnov1: {innov1}\n\nInnov2: {innov2}\n\nInnov3: {innov3}")
         
-        full_context = f"Base:\n{base_content}\n\nInnov1:\n{innov1}\n\nInnov2:\n{innov2}\n\nInnov3:\n{innov3}"
-        safe_context = PromptManager._sanitize(full_context)
+        # 🔥 关键修复：$\alpha \in \{0.1, 0.5\}$ 改为 $\alpha \in \{{0.1, 0.5\}}$
+        return fr"""
+        {PromptManager.CORE_SYSTEM_CONTEXT}
 
-        mission_prompt = textwrap.dedent(f"""
-            <mission>
-            我们的三个创新点已经由你（AI合伙人）协助用户完善定稿。
-            现在，请设计一份能够验证这套组合拳（Framework）有效性的实验方案。
-            这是一个生成任务，请直接输出包含 `<DRAFT>` 标签的内容。
-            </mission>
+        <mission>
+        作为 PI，请设计一份能够完美支撑上述三个创新点的实验方案。
+        **核心目标**：通过消融实验（Ablation Study）证明 Innov 1, 2, 3 缺一不可。
+        </mission>
 
-            <context>
-            {safe_context}
-            </context>
+        <paper_content>
+        {summary}
+        </paper_content>
 
-            <requirements>
-            1. **Datasets**: 推荐使用 FEMNIST, CIFAR-10, 以及一个 NLP 数据集。
-            2. **Non-IID**: 必须包含 Dirichlet $\\alpha=0.1$ (Extreme) 和 $\\alpha=0.5$ (Moderate)。
-            3. **Baselines**: 根据我们的创新点类型，挑选 5 个最强劲的对手（如 FedAvg, FedProx, SCAFFOLD, Moon, FedDyn）。
-            4. **Ablation**: 必须设计实验证明 Innov 1, 2, 3 是缺一不可的（Synergy）。
-            </requirements>
+        <requirements>
+        请直接生成 `<DRAFT>` 内容，Markdown 格式：
 
-            <output_format>
-            请输出：
-            简短的开场白（如“好的，这是为你设计的实验方案...”）
-            <DRAFT>
-            # 实验设置 (Experimental Setup)
-            ... (Markdown 表格和配置)
-            </DRAFT>
-            </output_format>
-        """).strip()
-
-        return f"{sys_ctx}\n\n{mission_prompt}"
+        1.  **Datasets**: 推荐使用 FEMNIST (Character), CIFAR-100 (Image), Shakespeare (Text)。
+            *必须强调数据异构设置：Dirichlet distribution $\alpha \in \{{0.1, 0.5\}}$*。
+        2.  **Baselines**: 挑选 5 个强力对手（如 FedAvg, FedProx, SCAFFOLD, FedDyn, Moon）。
+        3.  **Ablation Study Design (关键)**: 
+            设计一个表格，展示如何逐步添加模块并观察性能提升。
+            - Base
+            - Base + Innov 1
+            - Base + Innov 1 + Innov 2
+            - Proposed (Base + 1 + 2 + 3)
+        4.  **Hyperparameters**: 给出 Learning rate, Batch size, Local epochs 的建议值。
+        </requirements>
+        """

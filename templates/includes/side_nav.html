@@ -137,36 +137,53 @@
     <div class="list-group-item bg-primary text-white fw-bold py-3">
         🚀 功能导航
     </div>
-    <a href="{% url 'core:intro' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
-        <span>实验室概览</span>
-    </a>
-    
-    <a href="{% url 'Github_trend:index' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
-        <span>GitHub 趋势</span>
-    </a>
-    
-    <a href="{% url 'community:post_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
-        <span>社区讨论</span>
-    </a>
-    
-    <a href="{% url 'tasks:my_tasks' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
-        <span>任务中心</span>
-        <span class="badge bg-warning text-dark rounded-pill">赏金</span>
-    </a>
-    
+
     <a href="{% url 'npy_editor:home' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
         <span>NPY 数据工坊</span>
+        <span class="badge bg-primary rounded-pill">科研</span>
     </a>
 
     <a href="{% url 'innovation_agent:project_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
         <span>创新 Agent</span>
-        <span class="badge bg-primary rounded-pill">New</span>
+        <span class="badge bg-primary rounded-pill">科研</span>
     </a>
+
+    <a href="{% url 'Github_trend:index' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
+        <span>GitHub 趋势</span>
+        <span class="badge bg-warning rounded-pill">学习</span>
+    </a>
+
     <a href="{% url 'vocabulary:index' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
         <span>四六级学习</span>
+        <span class="badge bg-warning rounded-pill">学习</span>
+    </a>
+
+    <a href="{% url 'core:intro' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
+        <span>实验室概览</span>
+        <span class="badge bg-warning text-dark rounded-pill">工作</span>
+    </a>
+
+    <a href="{% url 'community:post_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
+        <span>社区讨论</span>
+        <span class="badge bg-warning text-dark rounded-pill">工作</span>
+    </a>
+
+    <a href="{% url 'tasks:my_tasks' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
+        <span>任务中心</span>
+        <span class="badge bg-warning text-dark rounded-pill">工作</span>
     </a>
 
     <a href="{% url 'direct_messages:inbox' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 border-start-0 border-end-0">
         <span>我的私信</span>
+        <span class="badge bg-warning text-dark rounded-pill">工作</span>
     </a>
+    
+    
+    
+    
+    
+    
+    
+
+    
 </div>
