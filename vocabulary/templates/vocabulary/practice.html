@@ -23,12 +23,11 @@
 
         <div class="game-stage">
             
-            <div class="word-display animate__animated animate__fadeIn">
+            <div class="word-display animate__animated animate__fadeIn" id="wordDisplayArea">
                 <div id="posContainer" class="mb-2" style="min-height: 28px;"></div>
-                
                 <div class="meaning-text" id="wordMeaning">Loading...</div>
                 
-                <div class="phonetic-pill" onclick="playAudio()">
+                <div class="phonetic-pill d-none" id="phoneticBtn" onclick="playAudio()">
                     <i class="bi bi-volume-up-fill"></i>
                     <span id="wordPhonetic"></span>
                 </div>
@@ -40,7 +39,7 @@
                 <div id="hintCard" class="hint-card d-none animate__animated animate__headShake">
                     <div class="hint-header">
                         <div class="hint-icon-box"><i class="bi bi-lightbulb-fill"></i></div>
-                        <span class="hint-title">提示 / 例句</span>
+                        <span class="hint-title">提示 / 答案</span>
                     </div>
                     <div class="hint-body" id="hintBody"></div>
                 </div>
@@ -49,7 +48,7 @@
             </div>
 
             <div class="bottom-actions">
-                <button class="btn-action btn-skip" id="skipBtn" onclick="showAnswer()">
+                <button class="btn-action btn-skip" id="skipBtn" onclick="giveUp()">
                     🙈 不知道 / 提示
                 </button>
                 <button class="btn-action btn-submit" id="submitBtn" onclick="checkAnswer()" disabled>
@@ -62,13 +61,21 @@
         <div id="resultOverlay" class="result-overlay d-none animate__animated animate__fadeIn">
             <div class="result-box animate__animated animate__bounceIn">
                 <div class="result-icon">🏆</div>
-                <h2>本次挑战完成!</h2>
-                <p>积跬步，至千里。继续保持！</p>
+                <h2 id="resultTitle">本次练习完成!</h2>
+                <p id="resultSubTitle">积跬步，至千里。继续保持！</p>
                 
+                <div class="text-start bg-light p-3 rounded-3 border mb-4 d-none" id="ebbinghausFeedback">
+                    <div class="small text-muted mb-1">
+                        <i class="bi bi-geo-alt-fill text-danger"></i> <span id="localTimeText">--</span>
+                    </div>
+                    <div class="small text-muted" id="nextReviewText">
+                        <i class="bi bi-clock-history text-primary"></i> 计算下次复习时间...
+                    </div>
+                </div>
                 <div class="result-stats">
                     <div class="stat-item">
-                        <div class="stat-num text-success" id="resultCorrect">10</div>
-                        <div class="stat-label">正确</div>
+                        <div class="stat-num text-success" id="resultCorrect">-</div>
+                        <div class="stat-label">总数</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-num text-warning">Done</div>
@@ -77,7 +84,7 @@
                 </div>
 
                 <div class="result-btns">
-                    <button onclick="location.reload()" class="btn-primary-action w-100">再来一组</button>
+                    <a href="{% url 'vocabulary:plan' %}" class="btn-primary-action w-100 text-decoration-none d-block pt-3">返回计划表</a>
                     <a href="{% url 'vocabulary:index' %}" class="btn-secondary-action w-100 mt-2">返回大厅</a>
                 </div>
             </div>
@@ -89,10 +96,10 @@
 <audio id="wordAudio"></audio>
 
 <style>
-    /* === 视觉风格定义 === */
+    /* === 保持原有的视觉风格定义 === */
     :root {
         --bg-color: #ffffff;
-        --primary-color: #58cc02; /* 经典多邻国绿 */
+        --primary-color: #58cc02;
         --primary-shadow: #58a700;
         --error-color: #ff4b4b;
         --error-bg: #fff2f2;
@@ -110,7 +117,6 @@
         --hint-icon-color: #f59f00;
     }
 
-    /* 布局 */
     .practice-container {
         max-width: 800px; margin: 0 auto; min-height: 85vh;
         display: flex; flex-direction: column; padding: 20px;
@@ -160,7 +166,7 @@
     }
     .phonetic-pill:active { transform: translateY(4px); box-shadow: none; }
 
-    /* === 输入格子 === */
+    /* === 输入格子 (拼写模式) === */
     .input-grid {
         display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 20px;
     }
@@ -185,6 +191,26 @@
         border-color: var(--primary-color) !important; background-color: #dfffc8 !important;
         color: var(--primary-color) !important; box-shadow: none !important;
         transform: translateY(4px);
+    }
+
+    /* === 👇👇👇 新增：普通输入框样式 (用于英译汉/汉译英) 👇👇👇 === */
+    .normal-input {
+        width: 100%; max-width: 500px; height: 60px; font-size: 1.5rem; font-weight: 700; text-align: center;
+        color: var(--text-color); background: white;
+        border: 2px solid var(--input-border); border-radius: 16px;
+        box-shadow: 0 4px 0 var(--input-border);
+        transition: all 0.1s;
+    }
+    .normal-input:focus {
+        outline: none; border-color: var(--focus-border); background-color: #f0faff;
+        box-shadow: 0 4px 0 var(--focus-shadow); transform: translateY(-2px);
+    }
+    .normal-input.wrong {
+        border-color: var(--error-color) !important; background-color: var(--error-bg) !important;
+    }
+    .normal-input.correct {
+        border-color: var(--primary-color) !important; background-color: #dfffc8 !important;
+        box-shadow: none !important; transform: translateY(4px);
     }
 
     /* === 提示区 === */
@@ -220,6 +246,7 @@
         transform: scale(0); transition: transform 0.3s;
     }
     .status-text.show { transform: scale(1); }
+    .status-text.wrong { color: var(--error-color); text-shadow: none; }
 
     /* 底部按钮 */
     .bottom-actions { margin-top: auto; display: flex; gap: 15px; width: 100%; padding-top: 20px; border-top: 2px solid #f0f0f0; }
@@ -266,15 +293,29 @@
 </style>
 
 <script>
+    // === 1. 初始化参数 ===
     const urlParams = new URLSearchParams(window.location.search);
-    const LEVEL = urlParams.get('level') || 'CET4';
-    const COUNT = urlParams.get('count') || 10;
-    const MODE = urlParams.get('mode') || 'learn';
-    const API_URL = `{% url 'vocabulary:api_get_words' %}?level=${LEVEL}&count=${COUNT}&mode=${MODE}`;
-    
-    let wordsQueue = [], currentWordObj = null, currentIndex = 0;
-    let isErrorState = false; 
+    const BATCH_ID = urlParams.get('batch_id');
+    const MODE = urlParams.get('mode') || 'learn'; // learn(新学), review(复习)
+    const TYPE = urlParams.get('type') || 'spell'; // spell(拼写), en2cn(英译汉), cn2en(汉译英)
+    const COUNT = urlParams.get('count') || 60;
+    const BOOK = urlParams.get('level') || 'CET4'; // 词书
 
+    // 艾宾浩斯复习模式需要的 API
+    let API_URL = `{% url 'vocabulary:api_get_words' %}?mode=${MODE}`;
+    if (MODE === 'review') {
+        if (BATCH_ID) API_URL += `&batch_id=${BATCH_ID}`;
+        else alert("缺少复习批次ID");
+    } else {
+        API_URL += `&level=${BOOK}&count=${COUNT}`;
+    }
+    
+    let wordsQueue = [];
+    let currentWordObj = null;
+    let currentIndex = 0;
+    let isErrorState = false; 
+    let generatedBatchId = null; // 用于最后结算
+    
     document.addEventListener('DOMContentLoaded', initGame);
 
     async function initGame() {
@@ -283,58 +324,105 @@
             const json = await res.json();
             if (json.status === 'ok') {
                 wordsQueue = json.data;
+                // 保存批次ID用于最后结算
+                if (json.batch_info && json.batch_info.id) {
+                    generatedBatchId = json.batch_info.id;
+                } else if (BATCH_ID) {
+                    generatedBatchId = BATCH_ID;
+                }
+
                 if (wordsQueue.length === 0) {
                     alert("暂无单词可供练习！");
-                    window.location.href = "{% url 'vocabulary:index' %}";
+                    window.location.href = "{% url 'vocabulary:plan' %}";
                     return;
                 }
+                
                 document.getElementById('totalCount').innerText = wordsQueue.length;
                 loadNextWord();
             }
         } catch (e) { console.error(e); alert("网络错误，请检查连接"); }
     }
 
+    // === 2. 核心渲染逻辑 ===
     function loadNextWord() {
         if (currentIndex >= wordsQueue.length) {
-            showResult();
+            finishBatch(); // 所有单词完成，进行结算
             return;
         }
 
         currentWordObj = wordsQueue[currentIndex];
         isErrorState = false;
         
-        // 1. 进度条更新
+        // 进度条
         document.getElementById('currentIdx').innerText = currentIndex + 1;
         document.getElementById('progressBar').style.width = `${(currentIndex / wordsQueue.length) * 100}%`;
 
-        // 2. 内容更新
-        renderMeaning(currentWordObj.meaning);
-        document.getElementById('wordPhonetic').innerText = currentWordObj.phonetic || "";
-        
-        // 3. 🔥🔥🔥 强制清空状态，修复残留 Bug 🔥🔥🔥
-        const statusText = document.getElementById('statusText');
-        statusText.innerText = "";  
-        statusText.className = "status-text"; // 移除所有动画类，只保留基础类
-        
-        // 4. 隐藏提示卡片
-        const hintCard = document.getElementById('hintCard');
-        hintCard.classList.add('d-none');
-        hintCard.classList.remove('animate__headShake');
+        // UI 重置
+        resetUI();
 
-        // 5. 重置按钮
-        const btn = document.getElementById('submitBtn');
-        btn.innerText = "确认提交";
-        btn.disabled = true;
-        btn.classList.remove('btn-retry');
-        
-        playAudio();
-        createInputs(currentWordObj.word);
+        // 核心：根据不同模式渲染界面
+        renderCardByMode();
     }
 
+    function renderCardByMode() {
+        const displayArea = document.getElementById('wordDisplayArea');
+        const inputContainer = document.getElementById('inputContainer');
+        const posContainer = document.getElementById('posContainer');
+        const meaningEl = document.getElementById('wordMeaning');
+        const phoneticEl = document.getElementById('phoneticBtn');
+
+        // 清空
+        posContainer.innerHTML = '';
+        inputContainer.innerHTML = '';
+        meaningEl.innerText = '';
+        
+        if (TYPE === 'spell' || TYPE === 'cn2en') {
+            // --- 拼写模式 / 汉译英 ---
+            // 显示：中文释义
+            renderMeaning(currentWordObj.meaning); // 渲染词性胶囊和中文
+            phoneticEl.classList.add('d-none'); // 隐藏音标，因为要猜词
+
+            // 输入：格子 (spell) 或 输入框 (cn2en)
+            // 为了保持一致性，我们统一用之前的格子输入法，因为它体验很好
+            createGridInputs(currentWordObj.word); 
+
+        } else if (TYPE === 'en2cn') {
+            // --- 英译汉模式 ---
+            // 显示：英文单词 + 音标
+            meaningEl.innerText = currentWordObj.word;
+            meaningEl.className = "display-1 fw-bold text-dark mb-3"; // 大号字体
+            
+            phoneticEl.classList.remove('d-none');
+            document.getElementById('wordPhonetic').innerText = currentWordObj.phonetic || "";
+            playAudio(); // 自动播放
+
+            // 输入：普通大号输入框
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'normal-input';
+            input.placeholder = "请输入中文释义 (支持模糊匹配)";
+            input.id = 'fuzzyInput';
+            input.autocomplete = 'off';
+            
+            // 绑定事件
+            input.addEventListener('input', () => {
+                document.getElementById('submitBtn').disabled = (input.value.trim() === '');
+                if (isErrorState) clearErrorStyles();
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') checkAnswer();
+            });
+            
+            inputContainer.appendChild(input);
+            setTimeout(() => input.focus(), 100);
+        }
+    }
+
+    // === 3. 辅助渲染函数 ===
     function renderMeaning(rawMeaning) {
         const posContainer = document.getElementById('posContainer');
         const meaningEl = document.getElementById('wordMeaning');
-        posContainer.innerHTML = '';
+        meaningEl.className = "meaning-text"; // 恢复默认样式
         
         const match = rawMeaning.match(/^([a-zA-Z.&]+)\s*(.*)/);
         if (match && match.length >= 3) {
@@ -348,9 +436,8 @@
         }
     }
 
-    function createInputs(word) {
+    function createGridInputs(word) {
         const container = document.getElementById('inputContainer');
-        container.innerHTML = '';
         
         for (let i = 0; i < word.length; i++) {
             if ([' ', '-'].includes(word[i])) {
@@ -364,16 +451,14 @@
             const input = document.createElement('input');
             input.type = "text"; input.maxLength = 1; input.className = "char-input"; 
             input.dataset.index = i;
-            
             input.value = ""; 
+            // 防止浏览器自动填充干扰
             input.name = "char_" + currentIndex + "_" + i + "_" + Math.random().toString(36).substr(2, 5);
             input.autocomplete = "off"; 
-            input.setAttribute("data-lpignore", "true"); 
-            input.inputMode = "text"; input.autocorrect = "off"; input.autocapitalize = "off"; input.spellcheck = false;
-
-            input.addEventListener('input', (e) => handleInput(e, i));
-            input.addEventListener('keydown', (e) => handleKeyDown(e, i));
-            input.addEventListener('focus', (e) => handleFocus(e));
+            
+            input.addEventListener('input', (e) => handleGridInput(e, i));
+            input.addEventListener('keydown', (e) => handleGridKeyDown(e, i));
+            input.addEventListener('focus', (e) => { if (isErrorState) clearErrorStyles(); });
             
             container.appendChild(input);
         }
@@ -383,7 +468,8 @@
         }, 100);
     }
 
-    function handleInput(e, idx) {
+    // === 4. 格子输入法逻辑 (保留原版精华) ===
+    function handleGridInput(e, idx) {
         const val = e.target.value;
         const inputs = document.querySelectorAll('.char-input');
         if (isErrorState) clearErrorStyles();
@@ -397,11 +483,11 @@
         updateSubmitButton();
     }
 
-    function handleKeyDown(e, idx) {
+    function handleGridKeyDown(e, idx) {
         const inputs = document.querySelectorAll('.char-input');
         const input = inputs[idx];
 
-        if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.altKey) {
             e.preventDefault(); 
             input.value = e.key; 
             if (isErrorState) clearErrorStyles(); 
@@ -431,172 +517,234 @@
         if (e.key === 'Enter') checkAnswer();
     }
 
-    function handleFocus(e) {
-        if (isErrorState) clearErrorStyles();
-    }
-
     function updateSubmitButton() {
+        if (TYPE === 'en2cn') return; // 英译汉单独处理
         const inputs = Array.from(document.querySelectorAll('.char-input'));
         const allFilled = inputs.every(input => input.value.trim() !== '');
         document.getElementById('submitBtn').disabled = !allFilled;
     }
 
+    // === 5. 判分逻辑 (核心修改) ===
+    function checkAnswer() {
+        const btn = document.getElementById('submitBtn');
+        if (btn.disabled) return;
+        
+        // 如果按钮变成了"再来一次"或"继续"，点击则进入下一个
+        if (btn.classList.contains('btn-retry') || btn.innerText.includes("继续")) {
+            currentIndex++;
+            loadNextWord();
+            return;
+        }
+
+        let isCorrect = false;
+
+        // 🅰️ 英译汉：模糊匹配
+        if (TYPE === 'en2cn') {
+            const userVal = document.getElementById('fuzzyInput').value.trim();
+            if (!userVal) return;
+            
+            // 🔥 模糊算法：分词 + 包含检测
+            const rawMeaning = currentWordObj.meaning;
+            // 移除词性标记 (n. vt. adj.) 和标点
+            const separators = /[.,;，；\s]+|[a-z]+\./g;
+            const definitions = rawMeaning.split(separators).filter(s => s.trim().length > 0);
+            
+            // 判定：只要包含核心词汇就算对
+            isCorrect = definitions.some(def => {
+                return def === userVal || (def.includes(userVal) && userVal.length >= 1) || (userVal.includes(def) && def.length > 1);
+            });
+            
+            handleFeedback(isCorrect);
+        
+        } else {
+            // 🅱️ 拼写：精准匹配
+            const inputs = document.querySelectorAll('.char-input');
+            let allMatch = true;
+            let firstWrong = -1;
+
+            inputs.forEach((inp, index) => {
+                const char = inp.value.toLowerCase();
+                const target = currentWordObj.word[parseInt(inp.dataset.index)].toLowerCase();
+                if (char !== target) {
+                    allMatch = false;
+                    if (firstWrong === -1) firstWrong = index;
+                }
+            });
+
+            isCorrect = allMatch;
+            
+            if (!isCorrect) {
+                // 标红错误格子
+                inputs.forEach((inp, index) => {
+                    const char = inp.value.toLowerCase();
+                    const target = currentWordObj.word[parseInt(inp.dataset.index)].toLowerCase();
+                    if (char !== target) inp.classList.add('wrong');
+                });
+                if (inputs[firstWrong]) inputs[firstWrong].focus();
+            }
+            
+            handleFeedback(isCorrect);
+        }
+        
+        // 提交结果给后台 (词频统计)
+        submitToBackend(currentWordObj.id, isCorrect);
+    }
+
+    function handleFeedback(isCorrect) {
+        const statusText = document.getElementById('statusText');
+        const btn = document.getElementById('submitBtn');
+        const hintCard = document.getElementById('hintCard');
+        const hintBody = document.getElementById('hintBody');
+
+        if (isCorrect) {
+            // ✅ 正确
+            statusText.innerHTML = "Excellent!";
+            statusText.className = "status-text status-correct animate__animated animate__rubberBand show";
+            
+            // 拼写模式正确后，播放声音加强记忆
+            if (TYPE !== 'en2cn') playAudio();
+            
+            // 英译汉模式正确后，展示完整释义
+            if (TYPE === 'en2cn') {
+                hintCard.classList.remove('d-none');
+                hintBody.innerHTML = `<div class="text-success fw-bold">${currentWordObj.meaning}</div>`;
+            }
+
+            // 自动下一题 (延迟)
+            setTimeout(() => {
+                currentIndex++;
+                loadNextWord();
+            }, 1000);
+
+        } else {
+            // ❌ 错误
+            isErrorState = true;
+            statusText.innerText = "";
+            statusText.className = "status-text status-wrong"; // 清空动画类
+
+            hintCard.classList.remove('d-none');
+            hintCard.classList.add('animate__headShake');
+            
+            // 构建提示内容
+            let html = '';
+            if (TYPE === 'en2cn') {
+                html = `<div class="mb-2"><strong>正确释义：</strong> ${currentWordObj.meaning}</div>`;
+            } else {
+                html = `<div class="mb-2"><strong>正确拼写：</strong> <span class="font-monospace text-danger fs-4">${currentWordObj.word}</span></div>`;
+                html += `<div class="small text-muted">${currentWordObj.meaning}</div>`;
+            }
+            
+            if (currentWordObj.example_en) {
+                html += `<hr><div class="small text-muted"><strong>例句：</strong><br>${currentWordObj.example_en}<br>${currentWordObj.example_cn || ''}</div>`;
+            }
+            hintBody.innerHTML = html;
+
+            btn.innerText = "继续";
+            btn.classList.add('btn-retry');
+            document.getElementById('skipBtn').style.display = 'none';
+        }
+    }
+
+    function giveUp() {
+        if (TYPE === 'en2cn') {
+            document.getElementById('fuzzyInput').value = "不知道";
+        } else {
+            // 填入正确答案然后判错
+            const inputs = document.querySelectorAll('.char-input');
+            inputs.forEach(inp => {
+                const idx = parseInt(inp.dataset.index);
+                inp.value = currentWordObj.word[idx];
+            });
+        }
+        checkAnswer(); // 触发判错逻辑
+    }
+
     function clearErrorStyles() {
         isErrorState = false;
         document.querySelectorAll('.char-input').forEach(inp => inp.classList.remove('wrong'));
+        document.querySelectorAll('.normal-input').forEach(inp => inp.classList.remove('wrong'));
+        
         const btn = document.getElementById('submitBtn');
         btn.classList.remove('btn-retry');
         btn.innerText = "确认提交";
         
-        // 🔥 清除状态文字
-        const statusText = document.getElementById('statusText');
-        statusText.innerText = "";
-        statusText.className = "status-text";
-    }
-
-    function checkAnswer() {
-        const btn = document.getElementById('submitBtn');
-        if (btn.disabled) return;
-
-        const inputs = document.querySelectorAll('.char-input');
-        let firstWrongIndex = -1;
-        let isAllCorrect = true;
-
-        inputs.forEach((input, index) => {
-            const char = input.value.toLowerCase();
-            const target = currentWordObj.word[parseInt(input.dataset.index)].toLowerCase();
-            if (char !== target) {
-                isAllCorrect = false;
-                if (firstWrongIndex === -1) firstWrongIndex = index;
-            }
-        });
-
-        if (isAllCorrect) {
-            handleCorrect(inputs);
-        } else {
-            handleWrong(inputs, firstWrongIndex);
-        }
-    }
-
-    function handleCorrect(inputs) {
-        inputs.forEach(inp => {
-            inp.classList.add('correct'); 
-            inp.disabled = true; 
-        });
-        
-        const statusText = document.getElementById('statusText');
-        statusText.innerText = "Excellent!";
-        // 🔥 强制重绘触发动画
-        statusText.className = "status-text";
-        void statusText.offsetWidth; 
-        statusText.className = "status-text show animate__animated animate__rubberBand";
-        
-        playAudio();
-        submitResult(true);
-
-        setTimeout(() => {
-            currentIndex++;
-            loadNextWord();
-        }, 1200);
-    }
-
-    function handleWrong(inputs, firstWrongIndex) {
-        isErrorState = true;
-        
-        inputs.forEach((inp, index) => {
-            const char = inp.value.toLowerCase();
-            const target = currentWordObj.word[parseInt(inp.dataset.index)].toLowerCase();
-            if (char !== target) {
-                inp.classList.add('wrong');
-            }
-        });
-        
-        // 错误时也要清空 Excellent
-        const statusText = document.getElementById('statusText');
-        statusText.innerText = "";
-        statusText.className = "status-text";
-
-        showHint();
-        
-        const hintCard = document.getElementById('hintCard');
-        hintCard.classList.remove('animate__headShake');
-        void hintCard.offsetWidth;
-        hintCard.classList.add('animate__headShake');
-
-        const btn = document.getElementById('submitBtn');
-        btn.innerText = "再试一次";
-        btn.classList.add('btn-retry');
-
-        if (inputs[firstWrongIndex]) {
-            inputs[firstWrongIndex].focus();
-        }
-        submitResult(false);
-    }
-
-    function showHint() {
-        const hintCard = document.getElementById('hintCard');
-        const hintBody = document.getElementById('hintBody');
-        
-        hintCard.classList.remove('d-none');
-        
-        const safeWord = currentWordObj.word;
-        const sentence = currentWordObj.example_en;
-
-        if (!sentence) {
-            hintBody.innerHTML = `
-                <div class="text-muted small mb-1">暂无例句，正确拼写为：</div>
-                <div class="hint-answer-box">${safeWord}</div>
-            `;
-        } else {
-            const regex = new RegExp(`(${safeWord})`, 'gi');
-            const highlightedSentence = sentence.replace(regex, '<span class="highlight-word">$1</span>');
-            const sentenceCn = currentWordObj.example_cn || "";
-            
-            hintBody.innerHTML = `
-                <div class="hint-en">${highlightedSentence}</div>
-                <div class="hint-cn">${sentenceCn}</div>
-            `;
-        }
-    }
-
-    window.showAnswer = function() {
-        showHint();
-        const inputs = document.querySelectorAll('.char-input');
-        
-        // 清空 Excellent
         document.getElementById('statusText').innerText = "";
-        document.getElementById('statusText').className = "status-text";
-
-        inputs.forEach(inp => {
-            const idx = parseInt(inp.dataset.index);
-            inp.value = currentWordObj.word[idx]; 
-            inp.classList.add('wrong'); 
-        });
-        isErrorState = true;
-        document.getElementById('submitBtn').disabled = false;
-        if(inputs.length > 0) inputs[0].focus();
+        document.getElementById('statusText').classList.remove('show');
     }
 
-    function submitResult(isCorrect) {
+    // === 6. 最终结算 (Finish Batch) ===
+    function finishBatch() {
+        document.getElementById('resultOverlay').classList.remove('d-none');
+        document.getElementById('resultCorrect').innerText = wordsQueue.length;
+        
+        // 1. 获取用户本地时间 (时区信息)
+        const now = new Date();
+        const timeStr = now.toLocaleString('zh-CN', { hour12: false });
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        document.getElementById('localTimeDisplay').innerHTML = `完成时间：${timeStr} <br><small class="text-muted">(${timeZone})</small>`;
+        document.getElementById('ebbinghausFeedback').classList.remove('d-none');
+
+        // 2. 调用后端结算接口 (触发艾宾浩斯防刷判定)
+        if (generatedBatchId) {
+            fetch("{% url 'vocabulary:api_finish_batch' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ batch_id: generatedBatchId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                const infoBox = document.getElementById('nextReviewInfo');
+                if (data.status === 'ok') {
+                    // 后端返回的是 UTC ISO 时间，转为本地时间显示
+                    let nextTimeMsg = "🎉 所有计划已完成！";
+                    if (data.next_due) {
+                        const nextDate = new Date(data.next_due);
+                        // 格式化为：02-18 10:30
+                        const nextStr = nextDate.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                        nextTimeMsg = `下次复习：<strong class="text-dark">${nextStr}</strong>`;
+                    }
+                    
+                    infoBox.innerHTML = `
+                        <div class="mb-2 fw-bold ${data.valid_checkin ? 'text-success' : 'text-warning'}">
+                            ${data.msg}
+                        </div>
+                        <div class="small text-muted"><i class="bi bi-alarm"></i> ${nextTimeMsg}</div>
+                        <div class="small text-muted mt-1">本页累计复习：${data.total_reviews} 遍</div>
+                    `;
+                }
+            });
+        }
+    }
+
+    // === 7. 通用工具 ===
+    function playAudio(url) {
+        // 如果没传url，尝试用当前对象的
+        const targetUrl = url || currentWordObj?.audio_url;
+        if(!targetUrl) return;
+        
+        const audio = document.getElementById('wordAudio');
+        audio.src = targetUrl;
+        audio.play().catch(e => console.log("Audio play failed"));
+    }
+
+    function submitToBackend(wordId, isCorrect) {
         fetch("{% url 'vocabulary:api_submit_result' %}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({ word_id: currentWordObj.id, is_correct: isCorrect })
-        }).catch(err => console.log(err));
-    }
-
-    function playAudio() {
-        const audio = document.getElementById('wordAudio');
-        if(currentWordObj && currentWordObj.audio_url) {
-            audio.src = currentWordObj.audio_url;
-            audio.play().catch(e => {});
-        }
+            body: JSON.stringify({ word_id: wordId, is_correct: isCorrect })
+        });
     }
     
-    function showResult() {
-        document.getElementById('resultOverlay').classList.remove('d-none');
-        document.getElementById('resultCorrect').innerText = wordsQueue.length;
-        document.getElementById('progressBar').style.width = '100%';
+    function resetUI() {
+        document.getElementById('hintCard').classList.add('d-none');
+        document.getElementById('statusText').innerText = "";
+        document.getElementById('statusText').className = "status-text";
+        document.getElementById('skipBtn').style.display = 'block';
+        
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = "确认提交";
+        btn.classList.remove('btn-retry');
+        btn.disabled = true;
     }
 </script>
 {% endblock %}

@@ -215,3 +215,5 @@ MESSAGE_TAGS = {
     messages.WARNING: 'warning',
     messages.ERROR: 'danger', # 👈 关键：把 error 映射为 danger (红色背景)
 }
+
+SITE_URL = 'http://49.234.26.95:8218'

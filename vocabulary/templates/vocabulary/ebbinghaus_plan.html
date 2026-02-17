@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}艾宾浩斯记忆矩阵{% endblock %}
+
+{% block content %}
+<style>
+    /* === 艾宾浩斯矩阵专用样式 === */
+    .plan-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    /* 顶部控制栏 */
+    .plan-header {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    /* 表格样式 */
+    .matrix-table {
+        margin-bottom: 0;
+        width: 100%;
+    }
+    .matrix-table th {
+        background: white;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        padding: 15px;
+        border-bottom: 2px solid #eee;
+        vertical-align: middle;
+    }
+    .matrix-table td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f2f2f2;
+    }
+
+    /* 👇👇👇 新增：交互行样式 👇👇👇 */
+    .interactive-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .interactive-row:hover {
+        background-color: #f8f9fa; /* 悬停高亮 */
+    }
+
+    /* 节点胶囊 */
+    .node-pill {
+        width: 100%;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        position: relative;
+    }
+    
+    /* 状态颜色 */
+    .node-secondary { background: #f1f3f5; color: #adb5bd; cursor: default; } /* 未到时间 */
+    .node-success { background: #d1e7dd; color: #0f5132; border-color: #badbcc; } /* 已完成 */
+    .node-danger { 
+        background: #fff5f5; color: #dc3545; border-color: #dc3545; 
+        cursor: pointer; box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
+        z-index: 5; /* 确保层级高于行点击 */
+    } 
+    .node-danger:hover { transform: translateY(-2px); background: #dc3545; color: white; }
+
+    /* 闪烁动画 (提醒复习) */
+    .node-danger::after {
+        content: "";
+        position: absolute; top: -3px; right: -3px;
+        width: 8px; height: 8px;
+        background: #dc3545; border-radius: 50%;
+        box-shadow: 0 0 0 2px white;
+    }
+
+    /* 移动端适配 */
+    @media (max-width: 992px) {
+        .table-responsive { display: block; overflow-x: auto; }
+        .node-pill { min-width: 80px; }
+    }
+</style>
+
+<div class="container py-4">
+    <div class="d-flex align-items-center mb-4">
+        <a href="{% url 'vocabulary:index' %}" class="btn btn-light rounded-circle shadow-sm me-3 border" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h3 class="fw-bold mb-0">🧠 记忆矩阵</h3>
+            <p class="text-muted small mb-0">Ebbinghaus Forgetting Curve Manager</p>
+        </div>
+    </div>
+
+    <div class="plan-container">
+        <div class="plan-header">
+            <div class="d-flex align-items-center gap-3">
+                <div class="dropdown">
+                    <button class="btn btn-white border dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-book-half me-1"></i> {{ current_book }}
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?book=CET4">CET-4 (四级)</a></li>
+                        <li><a class="dropdown-item" href="?book=CET6">CET-6 (六级)</a></li>
+                        <li><a class="dropdown-item" href="?book=KaoYan">考研英语</a></li>
+                        <li><a class="dropdown-item" href="?book=TOEFL">TOEFL</a></li>
+                        <li><a class="dropdown-item" href="?book=IELTS">IELTS</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-check form-switch d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" id="emailNotifySwitch" {% if user_setting %}checked{% endif %}>
+                <label class="form-check-label small fw-bold text-secondary" for="emailNotifySwitch">邮件复习提醒</label>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table matrix-table">
+                <thead>
+                    <tr>
+                        <th style="min-width: 120px;">学习日期</th>
+                        <th>单词量</th>
+                        <th>累计复习</th>
+                        <th class="text-center">首次</th>
+                        <th class="text-center">30分</th>
+                        <th class="text-center">12时</th>
+                        <th class="text-center">1天</th>
+                        <th class="text-center">2天</th>
+                        <th class="text-center">4天</th>
+                        <th class="text-center">7天</th>
+                        <th class="text-center">15天</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in batches %}
+                    <tr class="interactive-row" onclick="window.location.href='{% url 'vocabulary:batch_detail' batch.id %}'">
+                        <td class="fw-bold text-dark">{{ batch.date|date:"Y-m-d" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ batch.word_count }}</span></td>
+                        <td class="text-center"><span class="badge bg-info bg-opacity-10 text-info">{{ batch.total_reviews }} 次</span></td>
+                        
+                        {% for phase in batch.phases %}
+                        <td>
+                            {% if phase.done %}
+                                <div class="node-pill node-success" title="已完成">
+                                    <i class="bi bi-check-lg fs-5"></i>
+                                </div>
+                            {% elif phase.active %}
+                                <div class="node-pill node-danger" onclick="startReview(event, '{{ batch.id }}', '{{ phase.label }}')" title="点击开始复习">
+                                    复习
+                                </div>
+                            {% else %}
+                                <div class="node-pill node-secondary" title="{{ phase.desc|default:'未到时间' }}">
+                                    {% if forloop.first %}
+                                        {{ phase.desc }} {% else %}
+                                        <i class="bi bi-lock-fill opacity-50"></i>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <div class="display-4 mb-3 opacity-25">📅</div>
+                            <p>该词书暂无学习记录，快去背一组单词吧！</p>
+                            <a href="{% url 'vocabulary:practice' %}?level={{ current_book }}&count=60" class="btn btn-primary rounded-pill px-4">开始今日学习 (60词)</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reviewModeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold">选择复习模式</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pb-4">
+                <p class="text-muted mb-4">当前节点：<span id="reviewNodeName" class="fw-bold text-dark"></span></p>
+                <div class="d-grid gap-3">
+                    <button class="btn btn-outline-primary py-3 rounded-3 fw-bold" onclick="goPractice('spell')">
+                        🔤 拼写模式 (看义写词)
+                    </button>
+                    <button class="btn btn-outline-success py-3 rounded-3 fw-bold" onclick="goPractice('en2cn')">
+                        🇨🇳 英译汉 (看词选义/输入)
+                    </button>
+                    <button class="btn btn-outline-warning text-dark py-3 rounded-3 fw-bold" onclick="goPractice('cn2en')">
+                        🇺🇸 汉译英 (看义选词)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedBatchId = null;
+
+    // 1. 触发复习 (在模态框中选择模式)
+    function startReview(event, batchId, nodeLabel) {
+        // 🔥 关键修复：阻止事件冒泡，防止触发 tr 的 onclick 跳转
+        event.stopPropagation();
+        
+        selectedBatchId = batchId;
+        document.getElementById('reviewNodeName').innerText = nodeLabel;
+        new bootstrap.Modal(document.getElementById('reviewModeModal')).show();
+    }
+
+    // 2. 跳转练习页
+    function goPractice(type) {
+        // 构建 URL: practice page + batch_id + mode=review + type
+        const url = `{% url 'vocabulary:practice' %}?mode=review&batch_id=${selectedBatchId}&type=${type}`;
+        window.location.href = url;
+    }
+
+    // 3. 切换邮件提醒设置
+    document.getElementById('emailNotifySwitch').addEventListener('change', function(e) {
+        const isChecked = e.target.checked;
+        fetch("{% url 'vocabulary:api_toggle_setting' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                key: 'ebbinghaus_notify',
+                value: isChecked
+            })
+        }).then(res => {
+            if(!res.ok) alert("设置保存失败，请检查网络");
+        });
+    });
+</script>
+{% endblock %}

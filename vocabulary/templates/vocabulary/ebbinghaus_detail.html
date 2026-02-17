@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}批次详情 - {{ batch.study_date }}{% endblock %}
+
+{% block content %}
+<style>
+    /* === 详情页专用样式 === */
+    .detail-container {
+        background-color: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    /* 表格样式微调 */
+    .detail-table th {
+        background-color: #f8f9fa;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6c757d;
+        padding: 15px 10px;
+        border-bottom: 2px solid #eee;
+        white-space: nowrap;
+    }
+    
+    .detail-table td {
+        vertical-align: middle;
+        padding: 12px 10px;
+        border-bottom: 1px solid #f2f2f2;
+    }
+
+    /* 状态圆点 */
+    .status-dot {
+        width: 14px; 
+        height: 14px; 
+        border-radius: 50%;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+    
+    /* 已完成：绿色带光晕 */
+    .dot-done { 
+        background-color: #198754; 
+        box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15); 
+    } 
+    
+    /* 未完成：浅灰 */
+    .dot-wait { 
+        background-color: #e9ecef; 
+        border: 1px solid #dee2e6;
+    } 
+
+    /* 移动端适配：表格横向滚动 */
+    @media (max-width: 992px) {
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+</style>
+
+<div class="container py-4">
+    
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div class="d-flex align-items-center">
+            <a href="{% url 'vocabulary:plan' %}" class="btn btn-light rounded-circle border me-3 shadow-sm" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-arrow-left fs-5"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">{{ batch.study_date|date:"Y年m月d日" }}</h4>
+                <div class="d-flex align-items-center gap-2 small">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2">{{ batch.book_id }}</span>
+                    <span class="text-muted">共 {{ words.count }} 个单词</span>
+                    <span class="text-muted border-start ps-2">累计复习 {{ batch.total_review_count }} 遍</span>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <a href="{% url 'vocabulary:practice' %}?mode=review&batch_id={{ batch.id }}" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold">
+                <i class="bi bi-play-fill me-1"></i> 继续复习此页
+            </a>
+        </div>
+    </div>
+
+    <div class="detail-container">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 detail-table">
+                <thead>
+                    <tr>
+                        <th class="text-start ps-4" style="min-width: 150px;">单词 (Word)</th>
+                        <th class="text-start" style="min-width: 200px;">释义 (Meaning)</th>
+                        
+                        {% for p in phases_status %}
+                            <th class="text-center" style="min-width: 60px;">{{ p.name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for word in words %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold font-monospace text-dark fs-5">{{ word.word }}</div>
+                            <div class="small text-muted font-monospace">{{ word.phonetic|default:"" }}</div>
+                        </td>
+                        
+                        <td>
+                            <div class="text-secondary small text-truncate" style="max-width: 250px;" title="{{ word.meaning }}">
+                                {{ word.meaning }}
+                            </div>
+                        </td>
+                        
+                        {% for p in phases_status %}
+                        <td class="text-center">
+                            {% if p.done %}
+                                <span class="status-dot dot-done" title="已完成于 {{ p.done_at|default:'未知时间' }}"></span>
+                            {% else %}
+                                <span class="status-dot dot-wait" title="待复习"></span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5">
+                            <div class="text-muted opacity-50 display-6 mb-3">📭</div>
+                            <p class="text-secondary">本批次数据似乎为空，请尝试重新生成。</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="mt-3 text-center">
+        <small class="text-muted opacity-75">
+            <i class="bi bi-info-circle me-1"></i> 
+            提示：表格展示的是整页单词的艾宾浩斯节点完成情况。只要完成了复习打卡，对应列就会变绿。
+        </small>
+    </div>
+
+</div>
+{% endblock %}

@@ -61,6 +61,8 @@ class CustomUser(AbstractUser):
     coins = models.PositiveIntegerField('硬币', default=0)
     growth = models.PositiveIntegerField('成长值', default=0)
     level = models.PositiveIntegerField('等级', default=1)
+    # 👇👇👇 新增：艾宾浩斯提醒开关 👇👇👇
+    enable_ebbinghaus = models.BooleanField('开启艾宾浩斯提醒', default=False, help_text="开启后，系统将根据遗忘曲线发送复习提醒邮件")
 
     class Meta:
         verbose_name = '用户'

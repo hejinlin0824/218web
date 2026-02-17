@@ -20,4 +20,9 @@ app.conf.beat_schedule = {
         'task': 'tasks.tasks.auto_settle_expired_tasks',
         'schedule': 60.0, # 每 60 秒运行一次
     },
+    # 👇👇👇 【新增】艾宾浩斯提醒任务 👇👇👇
+    'check-ebbinghaus-every-5-minutes': {
+        'task': 'vocabulary.tasks.check_ebbinghaus_notifications',
+        'schedule': 300.0, # 每 300 秒 (5分钟) 运行一次
+    },
 }
