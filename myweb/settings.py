@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'npy_editor',
     'vocabulary', # 👈 新增这一行
     'innovation_agent', # 👈 新增
+    # 👇 新增这一行
+    'cyber_fortune', # 👈 赛博祈福
 ]
 
 MIDDLEWARE = [

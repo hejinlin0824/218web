@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}同步宇宙频率 - 赛博祈福{% endblock %}
+{% block content %}
+<style>
+    .cyber-init-wrapper { min-height: 70vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1b26 0%, #0f172a 100%); border-radius: 20px; color: #fff; position: relative; overflow: hidden; }
+    .cyber-init-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 16px; padding: 40px; max-width: 500px; width: 100%; text-align: center; z-index: 2; box-shadow: 0 0 30px rgba(0, 243, 255, 0.1); }
+    .cyber-title { font-family: 'Courier New', monospace; color: #00f3ff; text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); font-weight: bold; margin-bottom: 20px; }
+    .cyber-input { background: rgba(0, 0, 0, 0.3) !important; border: 1px solid #00f3ff !important; color: #00f3ff !important; text-align: center; font-family: monospace; box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.1); }
+    .cyber-input option { background: #0f172a; color: #00f3ff; }
+    .cyber-input::-webkit-calendar-picker-indicator { filter: invert(1) sepia(100%) saturate(10000%) hue-rotate(180deg); }
+    .btn-cyber { background: transparent; border: 2px solid #bc13fe; color: #bc13fe; padding: 12px 30px; font-weight: bold; border-radius: 8px; transition: all 0.3s; width: 100%; margin-top: 10px; }
+    .btn-cyber:hover { background: #bc13fe; color: white; box-shadow: 0 0 20px rgba(188, 19, 254, 0.6); }
+    .grid-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px); background-size: 30px 30px; z-index: 1; opacity: 0.3; }
+</style>
+<div class="container py-4">
+    <div class="cyber-init-wrapper animate__animated animate__fadeIn">
+        <div class="grid-bg"></div>
+        <div class="cyber-init-card animate__animated animate__zoomIn">
+            <div class="mb-4"><i class="bi bi-cpu" style="font-size: 4rem; color: #00f3ff; filter: drop-shadow(0 0 10px #00f3ff);"></i></div>
+            <h3 class="cyber-title">SYSTEM.SYNC_INIT()</h3>
+            <p class="text-white-50 small mb-4">"请提供您的初始降生参数与性格矩阵，以同步宇宙频率。"</p>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3 text-start">
+                    <label class="form-label text-white-50 small font-monospace">>> Date of Birth</label>
+                    {{ form.birth_date }}
+                </div>
+                <div class="mb-4 text-start">
+                    <label class="form-label text-white-50 small font-monospace">>> MBTI Matrix</label>
+                    {{ form.mbti }}
+                </div>
+                <button type="submit" class="btn-cyber">建立神经连接 [Enter]</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

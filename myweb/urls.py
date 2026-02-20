@@ -41,6 +41,8 @@ urlpatterns = [
     # 👇 新增这一行
     path('vocab/', include('vocabulary.urls', namespace='vocabulary')),
     path('innovation/', include('innovation_agent.urls')), # 👈 新增
+    # 👇 新增这一行
+    path('fortune/', include('cyber_fortune.urls', namespace='cyber_fortune')),
 ]
 
 # 👇 这一段是让开发环境能访问上传的图片（头像）

@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block title %}赛博神龛 - Web 218 Lab{% endblock %}
+
+{% block content %}
+<style>
+    .fortune-wrapper { background: #1a1a24; border-radius: 20px; padding: 30px; color: white; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+    
+    /* 玻璃拟态面板 */
+    .glass-panel { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px); }
+    
+    /* 赛博黄历 */
+    .almanac-box { font-family: 'Noto Serif SC', serif; }
+    .almanac-good { color: #10b981; }
+    .almanac-bad { color: #ef4444; }
+    .almanac-tag { display: inline-block; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; font-weight: bold; margin-right: 10px; font-size: 1.1rem; }
+    .bg-good { background: rgba(16, 185, 129, 0.2); }
+    .bg-bad { background: rgba(239, 68, 68, 0.2); }
+
+    /* 电子木鱼 */
+    .muyu-container { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 30px 0; }
+    .muyu-img { font-size: 6rem; filter: drop-shadow(0 0 20px rgba(188, 19, 254, 0.4)); cursor: pointer; transition: transform 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .muyu-img:active { transform: scale(0.9); }
+    
+    /* 漂浮文字动画 */
+    .floating-text { position: absolute; font-weight: bold; font-size: 1.2rem; pointer-events: none; animation: floatUp 1s ease-out forwards; text-shadow: 0 0 5px currentColor; }
+    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.2); } }
+
+    /* 抽签大屏 */
+    .score-display { font-family: 'Courier New', monospace; font-size: 5rem; font-weight: 900; line-height: 1; margin-bottom: 15px; background: linear-gradient(180deg, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; min-height: 85px; text-align: center;}
+    .btn-draw { background: linear-gradient(135deg, #00f3ff 0%, #bc13fe 100%); border: none; color: white; font-size: 1.2rem; font-weight: bold; padding: 12px 30px; border-radius: 50rem; cursor: pointer; transition: all 0.2s; width: 100%; box-shadow: 0 5px 20px rgba(0, 243, 255, 0.3); }
+    .btn-draw:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(0, 243, 255, 0.5); }
+    .btn-draw:disabled { background: #374151; color: #9ca3af; box-shadow: none; cursor: not-allowed; transform: none; }
+</style>
+
+<div class="container py-4">
+    <div class="fortune-wrapper animate__animated animate__fadeIn">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+            <div>
+                <h3 class="fw-bold mb-1" style="color: #00f3ff; text-shadow: 0 0 10px rgba(0,243,255,0.4);">⛩️ 赛博神龛</h3>
+                <small class="text-white-50">数据即信仰，算法即天意</small>
+            </div>
+            <div class="text-end glass-panel py-2 px-4">
+                <div class="small text-white-50 mb-1">本月气运算力池</div>
+                <div class="fs-3 fw-bold text-warning font-monospace" id="monthlyScore">{{ profile.monthly_luck_score }}</div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="glass-panel h-100 d-flex flex-column">
+                    <h5 class="fw-bold mb-4 text-white-50 border-bottom border-secondary pb-2"><i class="bi bi-calendar3 me-2"></i>赛博老黄历</h5>
+                    
+                    <div class="almanac-box mb-4">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="almanac-tag bg-good almanac-good">宜</div>
+                            <div>
+                                {% for item in almanac.good %}
+                                <span class="d-block fs-5 fw-bold text-light mb-1">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start">
+                            <div class="almanac-tag bg-bad almanac-bad">忌</div>
+                            <div>
+                                {% for item in almanac.bad %}
+                                <span class="d-block fs-5 fw-bold text-light mb-1">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto pt-3 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary">{{ profile.mbti }}</span>
+                            <span class="badge bg-secondary">{{ profile.zodiac }}</span>
+                        </div>
+                        <p class="small text-white-75 fst-italic mb-0 lh-lg">"{{ mbti_tip }}"</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="glass-panel h-100 muyu-container">
+                    <div class="text-white-50 small mb-2 text-center">累计敲击：<span id="muyuCount" class="text-white fw-bold">{{ profile.muyu_clicks }}</span> 次</div>
+                    
+                    <div class="muyu-img mt-4 mb-4" id="muyuBtn" onclick="clickMuyu(event)">
+                        🎐
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <h6 class="text-white fw-bold">赛博木鱼</h6>
+                        <small class="text-white-50">敲击补充当前月度气运池</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="glass-panel h-100 d-flex flex-column justify-content-center align-items-center text-center">
+                    <h6 class="text-white-50 w-100 text-start mb-4"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>每日算力测算</h6>
+                    
+                    {% if today_blessing %}
+                        <div class="score-display">{{ today_blessing.score }}</div>
+                        <button class="btn-draw" disabled>今日已测算</button>
+                        <div class="mt-4 p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary text-start w-100">
+                            <div class="small text-info mb-2">系统预测结果：</div>
+                            <div class="text-white-75" style="font-size: 0.95rem;">{{ today_blessing.fortune_text }}</div>
+                        </div>
+                    {% else %}
+                        <div class="score-display" id="scoreDisplay">--</div>
+                        <button class="btn-draw" id="drawBtn" onclick="startDraw()">启动推演模块</button>
+                        <div class="mt-4 p-3 bg-dark bg-opacity-25 rounded-3 border border-secondary text-start w-100" id="resultBox" style="display:none;">
+                            <div class="small text-info mb-2">系统预测结果：</div>
+                            <div class="text-white-75" id="resultText" style="font-size: 0.95rem;"></div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    const csrfToken = '{{ csrf_token }}';
+
+    // === 木鱼逻辑 ===
+    const muyuBtn = document.getElementById('muyuBtn');
+    const poolDisplay = document.getElementById('monthlyScore');
+    const muyuCountDisplay = document.getElementById('muyuCount');
+    
+    // 浮动文字库
+    const floatTexts = ["+1 功德", "+1 算力", "+1 头发", "+1 运势", "Bug -1"];
+    const floatColors = ["#10b981", "#00f3ff", "#bc13fe", "#f59e0b", "#ef4444"];
+
+    function clickMuyu(e) {
+        // 1. 创建漂浮文字
+        const rect = muyuBtn.getBoundingClientRect();
+        const floatEl = document.createElement('div');
+        floatEl.className = 'floating-text';
+        floatEl.innerText = floatTexts[Math.floor(Math.random() * floatTexts.length)];
+        floatEl.style.color = floatColors[Math.floor(Math.random() * floatColors.length)];
+        
+        // 计算点击位置
+        const offsetX = (Math.random() - 0.5) * 40; 
+        floatEl.style.left = (e.clientX - rect.left + offsetX) + 'px';
+        floatEl.style.top = (e.clientY - rect.top - 20) + 'px';
+        muyuBtn.parentElement.appendChild(floatEl);
+
+        // 动画结束后移除
+        setTimeout(() => floatEl.remove(), 1000);
+
+        // 2. 前端数字立即+1，提升打击感
+        poolDisplay.innerText = parseInt(poolDisplay.innerText) + 1;
+        muyuCountDisplay.innerText = parseInt(muyuCountDisplay.innerText) + 1;
+
+        // 3. 异步发送给后端
+        fetch("{% url 'cyber_fortune:click_muyu' %}", {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken}
+        }).catch(err => console.error("木鱼掉线", err));
+    }
+
+    // === 抽卡逻辑 ===
+    function startDraw() {
+        const btn = document.getElementById('drawBtn');
+        const display = document.getElementById('scoreDisplay');
+        const resultBox = document.getElementById('resultBox');
+        const resultText = document.getElementById('resultText');
+
+        btn.disabled = true;
+        btn.innerText = "量子计算中...";
+        
+        // 数字滚动特效
+        let spinInterval = setInterval(() => {
+            display.innerText = Math.floor(Math.random() * 100) + 1;
+        }, 50);
+
+        fetch("{% url 'cyber_fortune:draw_blessing' %}", {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            setTimeout(() => {
+                clearInterval(spinInterval);
+                if (data.status === 'ok') {
+                    display.innerText = data.score;
+                    display.style.color = data.score >= 85 ? '#bc13fe' : (data.score >= 50 ? '#00f3ff' : '#10b981');
+                    
+                    resultText.innerText = data.text;
+                    resultBox.style.display = 'block';
+                    
+                    // 同步月度池，防止被木鱼点击覆盖
+                    animateValue(poolDisplay, parseInt(poolDisplay.innerText), data.total_monthly, 1000);
+                    btn.innerText = "今日测算完成";
+                } else {
+                    display.innerText = "ERR";
+                    btn.innerText = "重新启动";
+                    btn.disabled = false;
+                    alert(data.msg);
+                }
+            }, 1200);
+        })
+        .catch(err => {
+            clearInterval(spinInterval);
+            alert("网络干扰，导致推演失败...");
+            btn.disabled = false;
+            btn.innerText = "重新启动";
+        });
+    }
+
+    // 数字增长动画
+    function animateValue(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
+    }
+</script>
+{% endblock %}
