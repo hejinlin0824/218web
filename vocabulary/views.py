@@ -84,6 +84,9 @@ def ebbinghaus_plan(request):
     """
     【艾宾浩斯计划表】
     展示每日学习批次及其复习状态
+    逻辑更新：
+    1. 增加顺序锁：上一级未完成，下一级即使时间到了也不会变红（Active）。
+    2. 允许额外复习：所有复习节点（Phase 1-7）无论状态如何，均标记为 clickable=True。
     """
     book_id = request.GET.get('book', 'CET4') # 默认看四级
     
@@ -95,49 +98,75 @@ def ebbinghaus_plan(request):
     
     # 预处理数据给模板
     batch_list = []
+    
     for b in batches:
         # 获取各阶段状态
         phases = []
         
-        # 节点 0: 首次
+        # --- 节点 0: 首次学习 ---
+        # 只要 first_completed_at 有值，就代表首次背完了（哪怕是部分结算）
+        first_done = True if b.first_completed_at else False
+        
         phases.append({
             'label': '首次',
-            'done': True if b.first_completed_at else False,
-            'active': False, 
-            'desc': b.first_completed_at.strftime('%m-%d %H:%M') if b.first_completed_at else '未完成'
+            'done': first_done,
+            'active': False, # 首次不存在“待复习”状态，要么做完了要么没做
+            'class': 'success' if first_done else 'secondary',
+            'desc': b.first_completed_at.strftime('%m-%d %H:%M') if b.first_completed_at else '未完成',
+            'clickable': False # 首次学习通常在 "Start Learning" 入口，这里不让点
         })
         
-        # 节点 1-7: 复习节点
+        # --- 节点 1-7: 复习节点 ---
+        # 获取所有配置的 key 并排序 (phase_1, phase_2 ...)
         sorted_keys = sorted(EbbinghausManager.CYCLES.keys(), key=lambda x: int(x.split('_')[1]))
+        
+        # 🔒 顺序锁标记：只有当“前一个阶段”完成了，当前阶段才有资格变红
+        previous_stage_done = first_done 
+
         for key in sorted_keys:
-            node = b.review_status.get(key, {})
-            is_done = node.get('done', False)
-            due_str = node.get('due')
+            node_config = EbbinghausManager.CYCLES[key]
+            node_data = b.review_status.get(key, {})
             
-            is_active = False
-            status_class = "secondary" # 默认灰
+            is_done = node_data.get('done', False)
+            due_str = node_data.get('due')
+            
+            is_active = False # 是否应该显示为红色（待办）
+            status_class = "secondary" # 默认灰色
             
             if is_done:
-                status_class = "success" # 绿勾
+                # 状态：已完成 (绿)
+                status_class = "success"
+                previous_stage_done = True # 解锁下一级
+            
             elif due_str:
+                # 状态：未完成，检查时间
                 due_time = timezone.datetime.fromisoformat(due_str)
                 now = timezone.now()
-                tolerance = EbbinghausManager.CYCLES[key]['tolerance']
+                tolerance = node_config['tolerance']
                 
-                # 判断是否进入复习时间窗
-                if now >= (due_time - tolerance):
+                # 判定条件：前置任务完成 AND 当前时间进入窗口 (应复习时间 - 容差 <= 现在)
+                if previous_stage_done and now >= (due_time - tolerance):
                     is_active = True
-                    status_class = "danger" # 红点 (待办)
+                    status_class = "danger" # 红色 (待办)
                 else:
-                    status_class = "secondary" # 还没到时间
+                    status_class = "secondary" # 灰色 (未到时间 或 前置未完成)
+                
+                # 当前未完成，阻断下一级的自动激活
+                previous_stage_done = False
             
+            else:
+                # 状态：数据异常或未初始化
+                status_class = "secondary"
+                previous_stage_done = False
+
             phases.append({
-                'label': EbbinghausManager.CYCLES[key]['name'],
+                'label': node_config['name'],
                 'done': is_done,
                 'active': is_active,
                 'class': status_class,
                 'key': key,
-                'desc': node.get('name')
+                'desc': node_data.get('name'),
+                'clickable': True # 🔥 关键：复习节点永远允许点击（哪怕是灰的，进去算额外复习）
             })
             
         batch_list.append({
@@ -199,9 +228,12 @@ def batch_detail(request, batch_id):
 
 @login_required
 def api_get_words(request):
-    """
-    获取单词数据 (支持学习模式和复习模式)
-    """
+    # 👇👇👇 调试代码 START 👇👇👇
+    print("\n========== API CALL RECEIVED ==========")
+    print(f"User: {request.user.username}")
+    print(f"Params: {request.GET}")
+    # 👆👆👆 调试代码 END 👆👆👆
+    
     mode = request.GET.get('mode', 'learn') 
     # 强制去除可能存在的空格
     book_id = request.GET.get('level', 'CET4').strip()
@@ -265,18 +297,36 @@ def api_get_words(request):
 @require_POST
 def api_finish_batch(request):
     """
-    批次完成结算接口
+    批次完成结算接口 (支持部分结算)
     """
     try:
         data = json.loads(request.body)
         batch_id = data.get('batch_id')
+        # 👇 新增：获取前端传来的“已学单词ID列表”
+        learned_ids = data.get('learned_ids', []) 
         
         if not batch_id:
             return JsonResponse({'status': 'error', 'msg': 'Missing batch_id'})
             
         batch = get_object_or_404(EbbinghausBatch, id=batch_id, user=request.user)
         
-        # 调用 Manager 进行判定 (包括时间窗校验、防刷计数)
+        # 👇👇👇 新增逻辑：处理中途退出的情况 👇👇👇
+        # 如果前端传了 learned_ids，说明用户可能只学了一部分就想结算
+        if learned_ids:
+            # 1. 获取当前批次里的所有单词
+            current_words = list(batch.words.values_list('id', flat=True))
+            
+            # 2. 找出那些“在批次里”但“不在已学列表”里的词 (即没背的词)
+            # 注意：learned_ids 需要转 int
+            learned_ids_int = [int(i) for i in learned_ids]
+            unlearned_ids = [wid for wid in current_words if wid not in learned_ids_int]
+            
+            # 3. 将没背的词从批次中移除 (它们会回到词库池，下次被选出)
+            if unlearned_ids:
+                batch.words.remove(*unlearned_ids)
+                print(f"用户中途结算：移除了 {len(unlearned_ids)} 个未背单词，保留 {len(learned_ids)} 个")
+
+        # 调用 Manager 进行判定 (初始化复习表、标记首次完成)
         is_valid_checkin, msg, next_due = EbbinghausManager.check_and_update_status(batch)
         
         return JsonResponse({
@@ -284,7 +334,8 @@ def api_finish_batch(request):
             'valid_checkin': is_valid_checkin,
             'msg': msg,
             'next_due': next_due,
-            'total_reviews': batch.total_review_count
+            'total_reviews': batch.total_review_count,
+            'actual_count': batch.words.count() # 返回实际保留的数量
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'msg': str(e)})

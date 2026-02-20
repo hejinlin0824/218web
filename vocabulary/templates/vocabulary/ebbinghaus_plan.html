@@ -161,16 +161,20 @@
                                     <i class="bi bi-check-lg fs-5"></i>
                                 </div>
                             {% elif phase.active %}
-                                <div class="node-pill node-danger" onclick="startReview(event, '{{ batch.id }}', '{{ phase.label }}')" title="点击开始复习">
+                                <div class="node-pill node-danger" onclick="startReview(event, '{{ batch.id }}', '{{ phase.label }}')" title="[艾宾浩斯] 时间到了，请复习！">
                                     复习
                                 </div>
                             {% else %}
-                                <div class="node-pill node-secondary" title="{{ phase.desc|default:'未到时间' }}">
-                                    {% if forloop.first %}
-                                        {{ phase.desc }} {% else %}
-                                        <i class="bi bi-lock-fill opacity-50"></i>
-                                    {% endif %}
-                                </div>
+                                {% if phase.clickable %}
+                                    <div class="node-pill node-secondary" onclick="startReview(event, '{{ batch.id }}', '{{ phase.label }} (额外复习)')" style="cursor: pointer;" title="未到时间，点击可进行额外巩固">
+                                        <i class="bi bi-lock-fill opacity-50 me-1" style="font-size: 0.7rem;"></i> 
+                                        <span class="small">{{ phase.label }}</span>
+                                    </div>
+                                {% else %}
+                                    <div class="node-pill node-secondary" style="opacity: 0.5;">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </div>
+                                {% endif %}
                             {% endif %}
                         </td>
                         {% endfor %}

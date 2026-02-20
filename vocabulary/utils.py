@@ -14,17 +14,15 @@ class EbbinghausManager:
         "phase_3": {"name": "1天后",  "delta": timedelta(days=1),     "tolerance": timedelta(hours=12)},
         "phase_4": {"name": "2天后",  "delta": timedelta(days=2),     "tolerance": timedelta(hours=12)},
         "phase_5": {"name": "4天后",  "delta": timedelta(days=4),     "tolerance": timedelta(hours=12)},
-        "phase_6": {"name": "7天后",  "delta": timedelta(days=7),     "tolerance": timedelta(days=24)},
-        "phase_7": {"name": "15天后", "delta": timedelta(days=15),    "tolerance": timedelta(days=24)},
+        "phase_6": {"name": "7天后",  "delta": timedelta(days=7),      "tolerance": timedelta(hours=24)}, 
+        "phase_7": {"name": "15天后", "delta": timedelta(days=15),     "tolerance": timedelta(hours=24)},
     }
 
     @staticmethod
     def get_or_create_today_batch(user, book_id, target_count=60):
-        """
-        获取或创建今日的学习批次
-        """
-        # 1. 参数清洗，防止有空格导致查不到
+        # 1. 参数清洗
         safe_book_id = str(book_id).strip()
+        print(f"DEBUG [1] Start: User={user}, Book={safe_book_id}", flush=True)  
         
         today = timezone.localdate()
         
@@ -34,45 +32,57 @@ class EbbinghausManager:
             book_id=safe_book_id,
             study_date=today
         )
-        
+        print(f"DEBUG [2] Batch Created? {created}. ID={batch.id}", flush=True)
+
         current_count = batch.words.count()
-        print(f"\n[DEBUG Utils] Batch ID: {batch.id}, User: {user}, Book: '{safe_book_id}', Date: {today}")
-        print(f"[DEBUG Utils] Current Words in Batch: {current_count}, Target: {target_count}")
+        print(f"DEBUG [3] Current words in batch: {current_count}", flush=True)
         
-        # 3. 如果没满，需要填充新词
+        # 3. 如果没满，尝试填充
         if current_count < target_count:
             needed = target_count - current_count
             
-            # [A] 找出该用户、该本词书、所有历史批次中已经存在的单词ID
-            used_word_ids = list(EbbinghausBatch.objects.filter(
+            # [A] 排除计划中的
+            scheduled_qs = EbbinghausBatch.objects.filter(
                 user=user, 
                 book_id=safe_book_id
-            ).values_list('words__id', flat=True))
+            ).values_list('words__id', flat=True)
+            scheduled_ids = list(scheduled_qs)
             
-            # [B] 查询新词
-            # 这里的 filter 必须和 shell 里验证过的条件一致
+            # [B] 排除已掌握的 (status > 0)
+            learned_qs = UserWordProgress.objects.filter(
+                user=user,
+                word__book_id=safe_book_id,
+                status__gt=0 
+            ).values_list('word__id', flat=True)
+            learned_ids = list(learned_qs)
+
+            print(f"DEBUG [4] Filters -> Scheduled: {len(scheduled_ids)}, Learned: {len(learned_ids)}", flush=True)
+
+            # [C] 检查总库存 (关键!)
+            total_stock = Word.objects.filter(book_id=safe_book_id).count()
+            print(f"DEBUG [5] Total words in DB for '{safe_book_id}': {total_stock}", flush=True)
+
+            if total_stock == 0:
+                print("❌ CRITICAL: 数据库里这本书一个词都没有！请检查导入脚本或book_id。", flush=True)
+
+            # [D] 执行筛选
             new_words_qs = Word.objects.filter(book_id=safe_book_id)\
-                .exclude(id__in=used_word_ids)
+                .exclude(id__in=scheduled_ids)\
+                .exclude(id__in=learned_ids)
             
-            # 打印库存情况
-            total_available = new_words_qs.count()
-            print(f"[DEBUG Utils] Searching Word table for book_id='{safe_book_id}'")
-            print(f"[DEBUG Utils] Words already learned/scheduled: {len(used_word_ids)}")
-            print(f"[DEBUG Utils] Available new words to pick from: {total_available}")
+            final_count = new_words_qs.count()
+            print(f"DEBUG [6] Available new words: {final_count}", flush=True)
             
-            if total_available > 0:
-                # 随机选取 needed 个
+            if final_count > 0:
+                # 随机取词
+                # 注意：如果数据量极大，order_by('?') 可能会慢，但在几千词级别没问题
                 selected_words = list(new_words_qs.order_by('?')[:needed])
                 batch.words.add(*selected_words)
-                print(f"[DEBUG Utils] Successfully added {len(selected_words)} new words to batch.")
+                print(f"DEBUG [7] Added {len(selected_words)} words to batch.", flush=True)
             else:
-                print(f"[DEBUG Utils] ⚠️ CRITICAL: No new words found for book_id='{safe_book_id}'!")
-                # 尝试查询一下总数，看是不是 book_id 对不上
-                total_in_db = Word.objects.filter(book_id=safe_book_id).count()
-                print(f"[DEBUG Utils] Total words in DB with book_id='{safe_book_id}': {total_in_db}")
-
+                print("⚠️ WARNING: 没有新词可选了！", flush=True)
+        
         return batch
-
     @staticmethod
     def init_schedule(batch, completion_time):
         schedule = {}
